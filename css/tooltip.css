@@ -1,0 +1,41 @@
+/* Hover tooltips (mouse only), see js/ui/tooltip.js */
+
+.tooltip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  max-width: 260px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 9px;
+  background: var(--panel-solid);
+  border: 1px solid var(--hair-strong);
+  border-radius: 3px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  font-family: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--chalk);
+  pointer-events: none;
+  animation: tooltip-in 0.12s ease-out;
+}
+.tooltip[hidden] { display: none; }
+.tooltip kbd {
+  flex: none;
+  margin-left: auto;
+  padding: 0 5px;
+  border: 1px solid var(--hair-strong);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ship);
+}
+@keyframes tooltip-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip { animation: none; }
+}

@@ -14,6 +14,7 @@ import { Coach } from './ui/coach.js';
 import { Planner } from './game/planner.js';
 import { PlannerPanel } from './ui/planner-panel.js';
 import { drawPlannerOverlay } from './render/planner-overlay.js';
+import { initTooltips } from './ui/tooltip.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -946,6 +947,7 @@ function loop(now) {
 // debug hook for automated testing
 window.__game = { app, cam, renderer, music, planner, startLevel, startTutorial, nextStep, LEVELS, SANDBOX, TUTORIAL, setMode, finish };
 
+initTooltips();
 showMenu();
 if (!progress.any()) showWelcome();
 requestAnimationFrame(loop);

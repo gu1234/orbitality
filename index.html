@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/tutorial.css">
   <link rel="stylesheet" href="css/planner.css">
+  <link rel="stylesheet" href="css/tooltip.css">
 </head>
 <body>
   <canvas id="view" aria-label="Orbit view"></canvas>
@@ -22,17 +23,17 @@
   <!-- In-flight interface -->
   <div id="flight" class="hidden">
     <header class="topbar">
-      <button class="icon-btn" id="btn-pause" aria-label="Pause">
+      <button class="icon-btn" id="btn-pause" aria-label="Pause" data-tip="Pause" data-key="Esc">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>
       </button>
       <div class="title-block">
         <div class="level-name" id="hud-level"></div>
         <div class="clock" id="hud-clock"></div>
       </div>
-      <button class="icon-btn music-btn" id="btn-music" aria-label="Music" aria-pressed="true">
+      <button class="icon-btn music-btn" id="btn-music" aria-label="Music" data-tip="Music on or off" data-key="N" aria-pressed="true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17V5l10-2v12"/><circle cx="6.5" cy="17" r="2.5"/><circle cx="16.5" cy="15" r="2.5"/><path class="slash" d="M3.5 3.5l17 17"/></svg>
       </button>
-      <button class="icon-btn" id="btn-hint" aria-label="Hints">
+      <button class="icon-btn" id="btn-hint" aria-label="Hints" data-tip="Show or hide hints" data-key="H">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 9a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.1 1-1.1 1.8v.5M12 17.2v.1"/></svg>
       </button>
     </header>
@@ -71,7 +72,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
         </button>
       </div>
-      <button class="tip-close" id="tip-close" aria-label="Hide hints">×</button>
+      <button class="tip-close" id="tip-close" aria-label="Hide hints" data-tip="Hide hints" data-key="H">×</button>
     </div>
 
     <section class="coach hidden" id="coach" aria-labelledby="coach-title">
@@ -90,9 +91,9 @@
     </section>
 
     <div class="view-tools">
-      <button class="chip plan-chip" id="btn-plan" aria-label="Plan a burn" aria-pressed="false">Plan</button>
-      <button class="chip" id="btn-focus" aria-label="Change camera focus">Earth</button>
-      <button class="chip" id="btn-frame" aria-label="Frame ship and target">Frame</button>
+      <button class="chip plan-chip" id="btn-plan" aria-label="Plan a burn" data-tip="Plan a burn ahead of time, then let the autopilot fly it" data-key="B" aria-pressed="false">Plan</button>
+      <button class="chip" id="btn-focus" aria-label="Change camera focus" data-tip="Change what the camera is centred on" data-key="F">Earth</button>
+      <button class="chip" id="btn-frame" aria-label="Frame ship and target" data-tip="Zoom to fit your ship and the target (or double-click the map)" data-key="Z">Frame</button>
     </div>
 
     <div class="burn-readout" id="burn-readout"></div>
@@ -100,22 +101,22 @@
 
     <footer class="controls">
       <div class="pad" id="pad" role="group" aria-label="Burn directions">
-        <button class="burn pro" data-burn="prograde" aria-label="Prograde burn">
+        <button class="burn pro" data-burn="prograde" aria-label="Prograde burn" data-tip="Prograde: push along your motion. Speeds you up and raises the far side of your orbit. Hold to burn, Shift for fine" data-key="W">
           <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="7"/><path d="M20 4v9M9 27l-5 4M31 27l5 4"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg>
           <span>Prograde</span>
         </button>
-        <button class="burn rin" data-burn="radialIn" aria-label="Radial in burn">
+        <button class="burn rin" data-burn="radialIn" aria-label="Radial in burn" data-tip="Radial in: push toward the body you orbit. Swings your orbit around you" data-key="A">
           <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="11"/><path d="M11 11l5 5M29 11l-5 5M11 29l5-5M29 29l-5-5"/></svg>
           <span>Radial in</span>
         </button>
         <div class="pad-center" id="pad-center">
           <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 8l7 22-7-5-7 5z"/></svg>
         </div>
-        <button class="burn rout" data-burn="radialOut" aria-label="Radial out burn">
+        <button class="burn rout" data-burn="radialOut" aria-label="Radial out burn" data-tip="Radial out: push away from the body you orbit. Swings your orbit around you" data-key="D">
           <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="7"/><path d="M15 15l-7-7M25 15l7-7M15 25l-7 7M25 25l7 7"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg>
           <span>Radial out</span>
         </button>
-        <button class="burn retro" data-burn="retrograde" aria-label="Retrograde burn">
+        <button class="burn retro" data-burn="retrograde" aria-label="Retrograde burn" data-tip="Retrograde: push against your motion. Slows you down and lowers the far side of your orbit" data-key="S">
           <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="7"/><path d="M15 15l10 10M25 15L15 25M20 27v9M9 13l-5-4M31 13l5-4"/></svg>
           <span>Retrograde</span>
         </button>
@@ -123,15 +124,15 @@
 
       <div class="right-controls">
         <div class="target-actions" id="target-actions">
-          <button class="burn tgt" data-burn="toward" aria-label="Burn toward target"><span>Toward</span></button>
-          <button class="burn tgt" data-burn="match" aria-label="Match target velocity"><span>Match</span></button>
+          <button class="burn tgt" data-burn="toward" aria-label="Burn toward target" data-tip="Push straight toward the target" data-key="T"><span>Toward</span></button>
+          <button class="burn tgt" data-burn="match" aria-label="Match target velocity" data-tip="Match the target&#x27;s velocity so you stop drifting apart" data-key="M"><span>Match</span></button>
         </div>
         <div class="warp">
-          <button class="icon-btn" id="warp-down" aria-label="Slower time">
+          <button class="icon-btn" id="warp-down" aria-label="Slower time" data-tip="Slower time" data-key="&lt;">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
           </button>
-          <button class="warp-value" id="warp-value" aria-label="Time warp. Tap for warp-to options"></button>
-          <button class="icon-btn" id="warp-up" aria-label="Faster time">
+          <button class="warp-value" id="warp-value" aria-label="Time warp. Tap for warp-to options" data-tip="Time warp. Click to jump ahead to your next Ap, Pe or closest approach"></button>
+          <button class="icon-btn" id="warp-up" aria-label="Faster time" data-tip="Faster time" data-key="&gt;">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
           </button>
         </div>
@@ -142,7 +143,7 @@
 
   <!-- Menu -->
   <div id="menu" class="screen">
-    <button class="icon-btn music-btn menu-music" id="menu-music" aria-label="Music" aria-pressed="true">
+    <button class="icon-btn music-btn menu-music" id="menu-music" aria-label="Music" data-tip="Music on or off" data-key="N" aria-pressed="true">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17V5l10-2v12"/><circle cx="6.5" cy="17" r="2.5"/><circle cx="16.5" cy="15" r="2.5"/><path class="slash" d="M3.5 3.5l17 17"/></svg>
     </button>
     <div class="menu-inner">
