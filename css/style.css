@@ -271,7 +271,45 @@ button:focus-visible, summary:focus-visible {
   order: -1;
 }
 .tip b { color: var(--ship); font-weight: 600; }
-.tip-nav, .tip-close {
+.tip-pager {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+}
+.tip-count {
+  min-width: 30px;
+  text-align: center;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--chalk);
+  font-variant-numeric: tabular-nums;
+}
+.tip-nav {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ship-soft);
+  border: 1px solid rgba(255, 181, 71, 0.55);
+}
+.tip-nav svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--ship);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tip-nav:hover { background: rgba(255, 181, 71, 0.3); }
+.tip-nav:active { background: var(--ship); }
+.tip-nav:active svg { stroke: var(--field); }
+.tip-close {
   width: 30px;
   height: 32px;
   flex: none;
@@ -280,8 +318,7 @@ button:focus-visible, summary:focus-visible {
   line-height: 1;
   color: var(--chalk-dim);
 }
-.tip-nav:disabled { opacity: 0.3; }
-.tip-nav:active, .tip-close:active { background: rgba(235, 230, 216, 0.1); }
+.tip-close:active { background: rgba(235, 230, 216, 0.1); }
 
 .view-tools {
   position: absolute;
@@ -708,6 +745,9 @@ button:focus-visible, summary:focus-visible {
   .clock { font-size: 14px; }
   .title-block { flex-direction: column; gap: 0; }
   .tip p { font-size: 13px; }
+  .tip-pager { margin-left: 2px; gap: 0; }
+  .tip-nav { width: 30px; height: 30px; }
+  .tip-count { min-width: 26px; font-size: 14px; }
   .burn.tgt { width: 70px; height: 42px; }
   .warp-value { min-width: 74px; font-size: 17px; }
   .warp .icon-btn { width: 38px; height: 40px; }

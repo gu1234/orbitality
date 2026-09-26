@@ -119,6 +119,7 @@ function renderMenu() {
   const meta = $('school-meta');
   meta.textContent = schooled ? '✓ Done' : progress.completed(LEVELS[0].id) ? '' : 'Start here';
   meta.classList.toggle('done', schooled);
+  $('school-nudge').classList.toggle('hidden', schooled);
 }
 
 function showMenu() {
@@ -269,8 +270,8 @@ function renderTip() {
   if (!hints.length) return;
   app.tipIndex = (app.tipIndex + hints.length) % hints.length;
   $('tip-text').innerHTML = hints[app.tipIndex];
-  $('tip-prev').disabled = hints.length < 2;
-  $('tip-next').disabled = hints.length < 2;
+  $('tip-pager').classList.toggle('hidden', hints.length < 2);
+  $('tip-count').textContent = `${app.tipIndex + 1}/${hints.length}`;
 }
 
 function toggleTip() {
