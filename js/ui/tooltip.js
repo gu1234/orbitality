@@ -3,7 +3,7 @@
 // use <b> to pick out a key name. Buttons with only an aria-label fall back to it. Touch and pen never see them, and pressing a control hides its
 // tooltip until the pointer leaves it, so holding a burn stays uncluttered.
 
-const DELAY = 350;
+const DELAY = 1000; // ms of steady hover before a tooltip appears
 const SELECTOR = '[data-tip], button[aria-label]';
 
 export function initTooltips() {
