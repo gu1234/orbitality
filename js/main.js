@@ -744,7 +744,8 @@ const input = new Input(canvas, {
   toggleTip: () => { if (app.mode === 'flying') toggleTip(); },
   toggleMusic: () => toggleMusic(),
   escape: () => {
-    if (app.mode === 'flying') setMode('paused');
+    if (!$('welcome').classList.contains('hidden')) closeWelcome();
+    else if (app.mode === 'flying') setMode('paused');
     else if (app.mode === 'paused') setMode('flying');
     else if (app.mode === 'brief') setMode('flying');
   },
@@ -789,7 +790,17 @@ $('btn-reset').addEventListener('click', () => {
   disarmReset();
   progress.reset();
   renderMenu();
+  showWelcome();
 });
+
+// first-launch warning: until anything is completed, every visit opens with it
+function showWelcome() {
+  $('welcome').classList.remove('hidden');
+  $('welcome-school').focus();
+}
+function closeWelcome() { $('welcome').classList.add('hidden'); }
+$('welcome-skip').addEventListener('click', closeWelcome);
+$('welcome-school').addEventListener('click', () => { closeWelcome(); startTutorial(); });
 $('brief-start').addEventListener('click', () => setMode('flying'));
 $('brief-back').addEventListener('click', showMenu);
 $('pause-resume').addEventListener('click', () => setMode('flying'));
@@ -936,4 +947,5 @@ function loop(now) {
 window.__game = { app, cam, renderer, music, planner, startLevel, startTutorial, nextStep, LEVELS, SANDBOX, TUTORIAL, setMode, finish };
 
 showMenu();
+if (!progress.any()) showWelcome();
 requestAnimationFrame(loop);

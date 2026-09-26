@@ -162,6 +162,20 @@
     </div>
   </div>
 
+  <!-- First-launch warning: shown on load until anything is completed, and after a reset -->
+  <div id="welcome" class="screen modal hidden" role="dialog" aria-labelledby="welcome-title">
+    <div class="card welcome">
+      <div class="card-kicker">Friendly warning</div>
+      <h2 id="welcome-title">Your instincts are wrong up here</h2>
+      <p>They learned physics from cars, bikes and shopping trolleys, and none of those orbit anything. In orbit, speeding up makes you slower and braking gets you there sooner.</p>
+      <p>Spend a few minutes at Flight School first and do exactly what it says, even when it sounds wrong. <i>Especially</i> when it sounds wrong.</p>
+      <div class="actions">
+        <button class="btn ghost" id="welcome-skip">I'll wing it</button>
+        <button class="btn primary" id="welcome-school">Take me to Flight School</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Briefing -->
   <div id="brief" class="screen modal hidden" role="dialog" aria-labelledby="brief-title">
     <div class="card">

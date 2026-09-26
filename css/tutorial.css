@@ -59,6 +59,15 @@
 .school-nudge b { color: var(--ship); font-weight: 600; }
 .school-nudge i { color: var(--chalk); }
 
+/* ---------------------------------------------------------------- first-launch warning */
+
+#welcome { z-index: 20; }
+.card.welcome { width: min(440px, 100%); }
+.welcome .card-kicker { color: var(--ship); }
+.welcome p { color: var(--chalk-dim); }
+.welcome p i { color: var(--chalk); }
+.welcome .actions { margin-top: 4px; }
+
 /* ---------------------------------------------------------------- coach panel */
 
 .coach {
