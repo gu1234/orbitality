@@ -68,6 +68,14 @@ A guided tutorial at the top of the menu, marked "Start here" for new players. I
 
 The coach panel shows a live readout for each goal and a note when you go off track, for example "you overshot" or "your path hits Earth". The controls and map markers it mentions pulse. A crash rewinds to the start of the step, and the pause menu has **Restart step**. At the end, a glossary card lists every term, including perilune and apolune for the Moon.
 
+## Glossary
+
+Every word of orbital flight in the game's text is a link: briefings, hints, the Flight School coach, results, the welcome card, and the names in the telemetry and target panels. Links have a dotted blue underline. Tap one and a card opens with a one-line definition, an animated diagram and a longer explanation. Terms inside a card are links too (with **Back**), and **See also** points to related ones. Time stands still while a card is open.
+
+The animations use real two-body motion scaled down, so ships really do slow down at apoapsis, and burns really reshape the orbit. They cover the orbit itself (Newton's cannon), prograde, retrograde, radial, apsides around Earth, the Moon and the Sun, period, circularizing, ellipses, time warp, Δv, the rocket equation, Hohmann transfers, phase angle, phasing, closest approach, relative velocity, spheres of influence, encounters, capture, hyperbolas, escape, the Oberth effect, gravity wells, geostationary orbit, transfer windows and bi-elliptic transfers. With reduced motion turned on, each card shows a still frame with a play button.
+
+The **Glossary** page (main menu or pause menu) lists every term with its full explanation, a search box, and a **Watch** button for each animation.
+
 ## Levels
 
 1. **Catch Up**: the target is ahead in the same orbit. Burn retrograde to speed up around Earth.
@@ -110,11 +118,14 @@ index.html, css/style.css   UI shell and styling (css/tutorial.css for Flight Sc
 js/physics/                 kepler.js (two-body math), bodies.js (solar system),
                             propagate.js (event-aware coasting), predict.js (patches, closest approach)
 js/game/                    world.js (ship, burns, warp, catch), levels.js, progress.js,
-                            tutorial.js (Flight School steps and goal checks)
+                            tutorial.js (Flight School steps and goal checks),
+                            terms.js (glossary words and how they are found in text)
 js/render/                  camera.js, renderer.js (canvas drawing), planets.js (lit, spinning planet discs),
-                            tutorial-overlay.js (Flight School arrows and marker pulses)
+                            tutorial-overlay.js (Flight School arrows and marker pulses),
+                            term-anims.js (animated diagrams for the glossary cards)
 js/audio/                   music.js (generative ambient score, Web Audio)
-js/ui/                      input.js (touch/mouse/keyboard), format.js, coach.js (Flight School panel)
+js/ui/                      input.js (touch/mouse/keyboard), format.js, coach.js (Flight School panel),
+                            terms.js (term links, glossary cards and page; css/terms.css)
 tests/                      physics tests + a scripted autopilot that proves every level is solvable
 assets/planets/             top-down planet images (generated)
 tools/build_planets.py      downloads the source maps and reprojects them (needs Pillow + NumPy)
@@ -148,4 +159,5 @@ npm test
 
 - **Physics tests** check the Kepler solver against an RK4 integrator (e = 0 to 3, forward and backward, 100 revolutions). They also check SOI hand-off continuity, impact detection, and that the simulation agrees with the prediction.
 - **Level tests** fly every level with a scripted pilot through the same game API, and assert that it catches the target within the level's fuel budget.
+- **Glossary tests** check that terms are found in the game's text (and only as whole words and in the right sense), that each is well formed, and that every animation plays through with finite coordinates.
 - **Flight School tests** fly every tutorial step by holding burn buttons through `World.update`, with a human reaction delay. They check that each goal can be met, and that no goal is met by just letting time run (drifting past apoapsis does not count as warping to it). They also check that overshooting can be corrected, that the solar leg is never captured by a planet, and that a crash rewinds the step.

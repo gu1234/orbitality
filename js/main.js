@@ -15,6 +15,8 @@ import { Planner } from './game/planner.js';
 import { PlannerPanel } from './ui/planner-panel.js';
 import { drawPlannerOverlay } from './render/planner-overlay.js';
 import { initTooltips } from './ui/tooltip.js';
+import { TermCard, linkTerms, setLinkedHtml, setLabelTerm } from './ui/terms.js';
+import { termFor } from './game/terms.js';
 import { showVersion } from './ui/version.js';
 
 const $ = (id) => document.getElementById(id);
@@ -38,6 +40,8 @@ const cam = new Camera();
 const music = new Music();
 const coach = new Coach();
 const planner = new Planner();
+// glossary cards: time stands still while one is open
+const terms = new TermCard({ open: () => input.releaseAllBurns() });
 const plannerPanel = new PlannerPanel(planner, $('flight'), { approve: approvePlan, cancel: cancelPlan, close: togglePlanner, fine: () => input.fineOn() });
 
 const app = {
@@ -216,15 +220,19 @@ function freeRect() {
 function showBrief() {
   const l = app.level;
   const n = LEVELS.indexOf(l);
+  // each term is linked once across the whole card
+  const seen = new Set();
   $('brief-concept').textContent = n >= 0 ? `Level ${n + 1} · ${l.concept}` : l.concept;
+  linkTerms($('brief-concept'), seen);
   $('brief-title').textContent = l.title;
-  $('brief-text').innerHTML = l.brief;
+  setLinkedHtml($('brief-text'), l.brief, seen);
   let budget = '';
   if (l.fuel) budget = `Fuel for <b>${fmtDv(l.fuel)}</b> of Δv. Finish under <b>${fmtDv(l.par)}</b> for three stars.`;
   else if (l.par) budget = `Unlimited fuel. Finish under <b>${fmtDv(l.par)}</b> of Δv for three stars.`;
-  $('brief-budget').innerHTML = budget;
+  setLinkedHtml($('brief-budget'), budget, seen);
   const hl = $('brief-hint-list');
   hl.innerHTML = l.hints.map((h) => `<li>${h}</li>`).join('');
+  linkTerms(hl, seen);
   $('brief-hints').open = false;
   $('brief-legend').classList.toggle('hidden', !app.world.target);
   $('brief-start').textContent = app.world.t > 0 ? 'Resume' : 'Start';
@@ -252,10 +260,12 @@ function finish() {
     $('result-title').textContent = 'Caught';
     $('result-sub').textContent = `Δv used: ${fmtDv(w.ship.dvUsed)} (three stars under ${fmtDv(l.par)}). Mission time: ${fmtDur(w.t)}.`;
     $('result-lesson').textContent = l.lesson;
+    linkTerms($('result-lesson'), linkTerms($('result-sub')));
   } else {
     const body = w.statusInfo?.body?.name || 'the surface';
     $('result-title').textContent = `You hit ${body}`;
     $('result-sub').textContent = 'Your periapsis was below the surface. When a red X appears on the orbit line, burn to lift the low point before you get there.';
+    linkTerms($('result-sub'));
     $('result-lesson').textContent = '';
   }
   const i = LEVELS.indexOf(l);
@@ -273,7 +283,7 @@ function renderTip() {
   tip.classList.toggle('hidden', app.tipHidden || !hints.length);
   if (!hints.length) return;
   app.tipIndex = (app.tipIndex + hints.length) % hints.length;
-  $('tip-text').innerHTML = hints[app.tipIndex];
+  setLinkedHtml($('tip-text'), hints[app.tipIndex]);
   $('tip-pager').classList.toggle('hidden', hints.length < 2);
   $('tip-count').textContent = `${app.tipIndex + 1}/${hints.length}`;
 }
@@ -376,6 +386,7 @@ function tutorialCrash() {
 function graduate() {
   progress.record(TUTORIAL.id, 1);
   $('grad-glossary').innerHTML = GLOSSARY.map(([term, def]) => `<dt>${term}</dt><dd>${def}</dd>`).join('');
+  for (const dt of $('grad-glossary').querySelectorAll('dt')) linkTerms(dt);
   coach.hide();
   setMode('grad');
   // start the Hohmann loop from its first burn; without motion, hold it on the second burn
@@ -398,8 +409,8 @@ function endTutorial() {
   $('flight').classList.remove('tutorial');
   $('pause-brief').classList.remove('hidden');
   $('pause-restart').textContent = 'Restart level';
-  setText('t-ap-label', 'Apoapsis');
-  setText('t-pe-label', 'Periapsis');
+  setLabel('t-ap-label', 'Apoapsis');
+  setLabel('t-pe-label', 'Periapsis');
 }
 
 function toggleMusic() {
@@ -591,6 +602,14 @@ function openWarpMenu() {
 
 // ------------------------------------------------------------------ HUD
 
+/** A HUD row name: it opens the card for the term it names (or `fallback`). */
+function setLabel(id, text, fallback = null) {
+  const el = $(id);
+  if (el.textContent === text) return;
+  el.textContent = text;
+  setLabelTerm(el, termFor(text) || fallback);
+}
+
 function setText(id, text) {
   const el = $(id);
   if (el.textContent !== text) el.textContent = text;
@@ -615,8 +634,8 @@ function updateHud(force = false) {
   else ap = fmtDist(el.ra - B.radius);
   setText('t-ap', ap);
   const names = tutStep()?.apsisNames ? apsisNames(B) : null;
-  setText('t-ap-label', names ? names.ap : 'Apoapsis');
-  setText('t-pe-label', names ? names.pe : 'Periapsis');
+  setLabel('t-ap-label', names ? names.ap : 'Apoapsis');
+  setLabel('t-pe-label', names ? names.pe : 'Periapsis');
   const pe = el.rp - B.radius;
   setText('t-pe', pe < 0 ? `${fmtDist(pe)} (impact)` : fmtDist(pe));
   $('t-pe').classList.toggle('warn', pe < 0);
@@ -626,14 +645,14 @@ function updateHud(force = false) {
   if (s.unlimited) {
     fuel.classList.add('unlimited');
     fuel.classList.remove('low');
-    setText('fuel-label', 'Δv used');
+    setLabel('fuel-label', 'Δv used');
     setText('fuel-value', fmtDv(s.dvUsed));
   } else {
     const left = w.dvRemaining();
     const frac = left / w.dvTotal();
     fuel.classList.remove('unlimited');
     fuel.classList.toggle('low', frac < 0.15);
-    setText('fuel-label', 'Δv left');
+    setLabel('fuel-label', 'Δv left');
     setText('fuel-value', fmtDv(left));
     $('fuel-fill').style.transform = `scaleX(${Math.max(0, frac)})`;
     if (left <= 0.01 && !app.fuelWarned && w.status === 'flying') {
@@ -649,32 +668,32 @@ function updateHud(force = false) {
     const ph = w.phaseInfo();
     if (ph && w.status === 'flying') {
       const d = Math.round(ph.deg);
-      setText('g-phase-label', ph.ownBody && w.target.body === s.body ? 'Phase' : `${w.target.body.name} phase`);
+      setLabel('g-phase-label', ph.ownBody && w.target.body === s.body ? 'Phase' : `${w.target.body.name} phase`, 'phase-angle');
       setText('g-phase', d === 0 ? '0°' : `${Math.abs(d)}° ${d > 0 ? 'ahead' : 'behind'}`);
     } else {
-      setText('g-phase-label', 'Phase');
+      setLabel('g-phase-label', 'Phase', 'phase-angle');
       setText('g-phase', '—');
     }
     const ca = w.approach;
     const enc = app.world.prediction?.find((p) => p.body === w.target.body && p.body !== s.body);
     if (w.status === 'caught') {
-      setText('g-ca-label', 'Status');
+      setLabel('g-ca-label', 'Status');
       setText('g-ca', 'Caught');
       setText('g-ca-when', '');
     } else if (ca && ca.kind === 'target') {
-      setText('g-ca-label', 'Closest');
+      setLabel('g-ca-label', 'Closest');
       setText('g-ca', fmtDist(ca.dist));
       setText('g-ca-when', ca.t - w.t < 2 ? 'now' : `in ${fmtDur(ca.t - w.t)}`);
     } else if (enc) {
-      setText('g-ca-label', `${enc.body.name} Pe`);
+      setLabel('g-ca-label', `${enc.body.name} Pe`);
       setText('g-ca', enc.el.rp < enc.body.radius ? 'Impact' : fmtDist(enc.el.rp - enc.body.radius));
       setText('g-ca-when', `arrive in ${fmtDur(enc.t0 - w.t)}`);
     } else if (ca && ca.kind === 'body') {
-      setText('g-ca-label', `Near ${ca.bodyRef.name}`);
+      setLabel('g-ca-label', `Near ${ca.bodyRef.name}`, 'closest');
       setText('g-ca', fmtDist(ca.dist));
       setText('g-ca-when', `in ${fmtDur(ca.t - w.t)}`);
     } else {
-      setText('g-ca-label', 'Closest');
+      setLabel('g-ca-label', 'Closest');
       setText('g-ca', '—');
       setText('g-ca-when', '');
     }
@@ -810,12 +829,13 @@ const input = new Input(canvas, {
   toggleTip: () => { if (app.mode === 'flying') toggleTip(); },
   toggleMusic: () => toggleMusic(),
   escape: () => {
-    if (!$('welcome').classList.contains('hidden')) closeWelcome();
+    if (terms.isOpen) terms.close();
+    else if (!$('welcome').classList.contains('hidden')) closeWelcome();
     else if (app.mode === 'flying') setMode('paused');
     else if (app.mode === 'paused') setMode('flying');
     else if (app.mode === 'brief') setMode('flying');
   },
-  keysActive: () => app.mode === 'flying',
+  keysActive: () => app.mode === 'flying' && !terms.isOpen,
 });
 
 document.querySelectorAll('.burn[data-burn]').forEach((b) => input.bindBurnButton(b));
@@ -834,7 +854,7 @@ $('btn-frame').addEventListener('click', frame);
 $('btn-lock').addEventListener('click', toggleFrameLock);
 $('btn-plan').addEventListener('click', togglePlanner);
 window.addEventListener('keydown', (e) => {
-  if (e.code !== 'KeyB' || e.repeat || e.metaKey || e.ctrlKey || e.altKey || app.mode !== 'flying') return;
+  if (e.code !== 'KeyB' || e.repeat || e.metaKey || e.ctrlKey || e.altKey || app.mode !== 'flying' || terms.isOpen) return;
   e.preventDefault();
   togglePlanner();
 });
@@ -842,12 +862,14 @@ window.addEventListener('keydown', (e) => {
 const WAIT_KEYS = { BracketLeft: -1, BracketRight: 1 };
 window.addEventListener('keydown', (e) => {
   const sign = WAIT_KEYS[e.code];
-  if (!sign || e.metaKey || e.ctrlKey || e.altKey || app.mode !== 'flying' || !planner.open) return;
+  if (!sign || e.metaKey || e.ctrlKey || e.altKey || app.mode !== 'flying' || !planner.open || terms.isOpen) return;
   e.preventDefault();
   if (!e.repeat) planner.pressWait(sign, e.shiftKey || input.fineOn());
 });
 window.addEventListener('keyup', (e) => { if (WAIT_KEYS[e.code]) planner.releaseWait(); });
 $('btn-sandbox').addEventListener('click', () => startLevel(SANDBOX));
+$('btn-glossary').addEventListener('click', () => terms.openIndex());
+$('pause-glossary').addEventListener('click', () => terms.openIndex());
 // two taps to wipe progress: the first arms the button for a few seconds
 let resetTimer = 0;
 function disarmReset() {
@@ -965,7 +987,7 @@ function loop(now) {
   } else if (app.mode === 'flying' || (app.mode === 'result' && w.status === 'caught')) {
     const before = w.status;
     if (app.mode === 'flying') tickPlanner(dt);
-    if (!planner.open) w.update(dt); // time stands still while a burn is being planned
+    if (!planner.open && !terms.isOpen) w.update(dt); // time stands still while planning or reading a card
     processLog();
     if (before === 'flying' && w.status !== 'flying') {
       music.cue(w.status);
@@ -1022,9 +1044,10 @@ function loop(now) {
 }
 
 // debug hook for automated testing
-window.__game = { app, cam, renderer, music, planner, startLevel, startTutorial, nextStep, LEVELS, SANDBOX, TUTORIAL, setMode, finish };
+window.__game = { app, cam, renderer, music, planner, terms, startLevel, startTutorial, nextStep, LEVELS, SANDBOX, TUTORIAL, setMode, finish };
 
 initTooltips();
+for (const el of document.querySelectorAll('.tagline, #school-nudge, #welcome p')) linkTerms(el);
 showVersion($('menu-version'));
 showMenu();
 if (!progress.any()) showWelcome();

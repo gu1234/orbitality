@@ -149,6 +149,8 @@ export class Input {
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Shift') { this.shift = true; if (!e.repeat) this.h.fine(true); }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // typing in a text box (the glossary search) is not a shortcut, except Escape
+      if (e.target.closest?.('input, textarea') && e.key !== 'Escape') return;
       if (!this.h.keysActive()) {
         if (e.key === 'Escape') this.h.escape();
         else if ((e.key === 'n' || e.key === 'N') && !e.repeat) this.h.toggleMusic();
