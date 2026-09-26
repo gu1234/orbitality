@@ -92,7 +92,7 @@ button:focus-visible, summary:focus-visible {
 }
 
 #flight > *, .upper > * { pointer-events: auto; }
-#flight > .upper { pointer-events: none; }
+#flight > .upper, #flight > .controls { pointer-events: none; } /* full-width bars: only their children take the pointer */
 
 .topbar {
   position: absolute;
