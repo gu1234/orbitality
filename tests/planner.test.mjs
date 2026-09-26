@@ -128,3 +128,84 @@ test('braking through zero at apoapsis reverses the orbit as the preview showed'
   assert.equal(w.shipElements().dir, -dir0, 'flown orbit reversed');
   sameOrbit(r.pred[0], w.prediction[0], 'reverse at Ap');
 });
+
+// ---- waiting before the burn
+
+test('a wait is counted in orbits and the delayed burn flies its preview', () => {
+  const { w, p } = plan(L.climb, { pro: 400 });
+  const P = w.shipElements().period;
+  assert.deepEqual(p.waitUnit(), { s: P, orbits: true });
+  p.nudgeWait(0.3);
+  p.tick(0);
+  const r = p.result;
+  assert.ok(Math.abs(r.nodeT - w.t - 0.3 * P) < 1e-6, 'burn 0.3 orbit from now');
+  assert.ok(r.startT > w.t, 'starts in the future');
+  fly(w, p);
+  sameOrbit(r.pred[0], w.prediction[0], 'delayed climb');
+});
+
+test('the phase at the burn follows the wait, and the hinted angle gives a close approach', () => {
+  // Moving Up: target 40° ahead, and a Hohmann transfer wants about 25°
+  const { w, p } = plan(L.climb, {});
+  const mu = w.ship.body.gm;
+  const r1 = Math.hypot(w.ship.x, w.ship.y);
+  const ts = w.targetState();
+  const r2 = Math.hypot(ts.x, ts.y);
+  const dv = Math.sqrt(mu / r1) * (Math.sqrt((2 * r2) / (r1 + r2)) - 1) * 1000;
+  const want = 180 * (1 - Math.pow((r1 + r2) / (2 * r2), 1.5));
+  assert.ok(Math.abs(p.result.phase.deg - 40) < 0.5, `starts ${p.result.phase.deg}° ahead`);
+  p.nudge('prograde', dv);
+  p.tick(0);
+  const now = p.result.approach.dist;
+  // step the wait until the phase at the burn reaches the Hohmann angle
+  let best = null;
+  for (let i = 0; i < 400; i++) {
+    p.nudgeWait(0.005);
+    p.tick(0);
+    const r = p.result;
+    if (r.phase.deg <= want) { best = r; break; }
+  }
+  assert.ok(best, 'phase angle reached');
+  if (verbose) console.log('phase wait', { want, now, then: best.approach.dist, wait: p.wait });
+  assert.ok(best.approach.kind === 'target' && best.approach.dist < 50, `close approach ${best.approach.dist} km`);
+  assert.ok(best.approach.dist < now / 5, 'much closer than burning straight away');
+});
+
+test('the wait stays within the path: never negative, never past an impact', () => {
+  const { p } = plan(L.climb, {});
+  p.nudgeWait(-5);
+  assert.equal(p.wait, 0);
+  // on a path that hits Earth the wait stops before the impact
+  const c = plan(L.climb, { pro: -600 });
+  fly(c.w, c.p);
+  assert.equal(c.w.prediction[0].end, 'impact');
+  c.p.show();
+  c.p.nudgeWait(1000);
+  c.p.tick(0);
+  assert.ok(c.p.result.nodeT < c.w.prediction[0].t1, 'burn before impact');
+});
+
+test('a parking orbit can wait days for a launch window', () => {
+  const { w, p } = plan(L.mars, {});
+  const d0 = p.result.phase.deg;
+  p.setWait(10 * 86400);
+  p.tick(0);
+  assert.ok(Math.abs(p.result.nodeT - w.t - 10 * 86400) < 1e-6, 'ten days out');
+  // Earth gains on Mars by about 0.46° a day
+  const d1 = p.result.phase.deg;
+  assert.ok(d0 - d1 > 4 && d0 - d1 < 5, `Mars phase ${d0}° -> ${d1}°`);
+});
+
+test('cancelling a delayed plan keeps its burn time for editing', () => {
+  const { w, p } = plan(L.climb, { pro: 400 });
+  p.nudgeWait(1.5);
+  p.tick(0);
+  assert.ok(p.approve());
+  const nodeT = p.armed.nodeT;
+  for (let i = 0; i < 10000 && w.t < nodeT / 2; i++) { p.fly(); w.update(1 / 60); }
+  assert.ok(w.t > 0 && w.t < nodeT, 'warping toward the burn');
+  p.cancel();
+  p.show();
+  p.tick(0);
+  assert.ok(Math.abs(p.result.nodeT - nodeT) < 1e-6, 'same burn time after reopening');
+});
