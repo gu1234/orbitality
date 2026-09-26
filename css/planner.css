@@ -1,5 +1,6 @@
-/* Burn planner: the Plan chip, the planning panel (above the controls, where
-   the hint strip sits) and the one-line countdown once a plan is approved. */
+/* Burn planner: the Plan chip, the planning panel (above the controls, stacked
+   on top of the hint strip; --tip-h is its height, set from main.js)
+   and the one-line countdown once a plan is approved. */
 
 .chip.plan-chip { color: var(--ok); border-color: rgba(155, 227, 180, 0.4); }
 .chip.plan-chip.on { background: var(--ok); border-color: var(--ok); color: var(--field); }
@@ -8,7 +9,7 @@
   position: absolute;
   left: var(--edge-l);
   right: calc(var(--edge-r) + 96px);
-  bottom: calc(var(--edge-b) + var(--pad-h) + 10px);
+  bottom: calc(var(--edge-b) + var(--pad-h) + 10px + var(--tip-h, 0px));
   max-width: 400px;
   background: var(--panel);
   border: 1px solid var(--hair);
@@ -138,14 +139,12 @@
 #flight.planning .pad .burn:active svg { stroke: var(--field); }
 #flight.planning .target-actions,
 #flight.planning .warp { opacity: 0.35; pointer-events: none; }
-#flight.planning .tip,
-#flight.plan-armed .tip { display: none; }
 
 @media (max-height: 520px) and (orientation: landscape) {
   .planner, .planner-armed {
     left: calc(var(--edge-l) + var(--cell) * 3 + 20px);
     right: calc(var(--edge-r) + 190px);
-    bottom: var(--edge-b);
+    bottom: calc(var(--edge-b) + var(--tip-h, 0px));
     margin: 0 auto;
   }
   .planner { padding: 4px 8px 6px; }

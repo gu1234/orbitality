@@ -948,6 +948,16 @@ function syncPlannerUi() {
   chip.classList.toggle('hidden', !!app.tut); // Flight School counts burns by button
   chip.classList.toggle('on', planner.open);
   chip.setAttribute('aria-pressed', String(planner.open));
+  // the planner sits just above the level hints, so both stay visible
+  const tip = $('tip');
+  const tipH = (planner.open || planner.armed) && !tip.classList.contains('hidden') ? tip.offsetHeight + 6 : 0;
+  if (tipH !== app.plannerTipH) {
+    app.plannerTipH = tipH;
+    flight.style.setProperty('--tip-h', `${tipH}px`);
+    plannerPanel.render();
+    plannerPanel.place();
+    return;
+  }
   plannerPanel.render();
 }
 
