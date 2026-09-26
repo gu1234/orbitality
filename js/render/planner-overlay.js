@@ -1,6 +1,7 @@
 // Burn planner overlay, drawn on top of the normal frame: the orbit the planned
 // burn gives (green), a node marker where it happens, the new Ap/Pe and the
-// closest approach it leads to. Stays up, fainter, while the ship warps to it.
+// closest approach it leads to, and where the target will be when the burn
+// happens. Stays up, fainter, while the ship warps to it.
 
 import { pointAt } from '../physics/kepler.js';
 import { fmtDist, fmtDur } from '../ui/format.js';
@@ -89,6 +90,31 @@ export function drawPlannerOverlay(r, world, cam, planner) {
   r.diamond(x, y, 6, rgba(CHALK, 0.1 * alpha), rgba(PLAN, alpha));
   // label hangs below the node, clear of the Ap/Pe label that points outward from the same spot
   if (res.nodeT - t > 1) r.marker(x, y, x, y - 1, [[`Burn in ${fmtDur(res.nodeT - t)}`, rgba(PLAN, alpha)]], PLAN, { dot: false, len: 22 });
+
+  // --- where the target will be at the burn, so the phase angle can be judged by eye
+  const tg = world.target;
+  if (planner.open && tg && res.nodeT - t > 1) {
+    let p = null;
+    if (tg.body === cur) {
+      const st = world.targetState(res.nodeT);
+      p = { x: a0.x + st.x, y: a0.y + st.y };
+    } else if (tg.body.parent === cur) {
+      const rel = tg.body.relPos(res.nodeT);
+      p = { x: a0.x + rel.x, y: a0.y + rel.y };
+    } else if (cur.parent && tg.body.parent === cur.parent) {
+      p = tg.body.absPos(res.nodeT);
+    }
+    if (p) {
+      const gx = cam.sx(p.x), gy = cam.sy(p.y);
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = rgba(TARGET, 0.85);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(gx, gy, 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      const name = tg.body === cur ? 'Target' : tg.body.name;
+      r.marker(gx, gy, gx, gy + 1, [[`${name} at burn`, rgba(TARGET, 0.9)]], TARGET, { dot: false, len: 18 });
+    }
+  }
 
   // --- closest approach the plan leads to
   const ca = planner.open ? res.approach : null;

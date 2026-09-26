@@ -494,27 +494,27 @@ export class World {
   /**
    * Phase angle: how far the target (or the body it orbits) is ahead of the ship,
    * measured around a common centre in the ship's direction of motion.
+   * By default for now; pass a time and the ship's state then (relative to its
+   * body) to get the angle at a future moment, as the planner does.
    * Returns { center, a0, a1, deg } with angles in radians, or null.
    */
-  phaseInfo() {
+  phaseInfo(t = this.t, s = this.ship) {
     const tg = this.target;
     if (!tg) return null;
-    const s = this.ship;
     const B = s.body;
-    const el = this.shipElements();
+    const el = elements(s.x, s.y, s.vx, s.vy, B.gm);
     const dir = el.dir;
     let center, a0, a1;
     // on an escape or flyby path the angle around our own body means nothing
     if (el.e >= 1 && (tg.body === B || tg.body.parent === B)) return null;
     if (tg.body === B) {
-      const ts = this.targetState();
+      const ts = this.targetState(t);
       center = B; a0 = Math.atan2(s.y, s.x); a1 = Math.atan2(ts.y, ts.x);
     } else if (tg.body.parent === B) {
-      if (el.e >= 1) return null;
-      const p = tg.body.relPos(this.t);
+      const p = tg.body.relPos(t);
       center = B; a0 = Math.atan2(s.y, s.x); a1 = Math.atan2(p.y, p.x);
     } else if (B.parent && tg.body.parent === B.parent) {
-      center = B.parent; a0 = B.angle(this.t); a1 = tg.body.angle(this.t);
+      center = B.parent; a0 = B.angle(t); a1 = tg.body.angle(t);
     } else {
       return null;
     }

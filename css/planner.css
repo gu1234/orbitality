@@ -77,6 +77,28 @@
 .planner-at button[aria-checked='true'] { border-color: var(--ok); color: var(--ok); background: rgba(155, 227, 180, 0.1); }
 .planner-at button:disabled { opacity: 0.35; }
 
+.planner-wait { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+.planner-wait .k { width: 3.2em; }
+.planner-wait-btn {
+  width: 34px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ok);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.planner-wait-btn:active { background: rgba(155, 227, 180, 0.15); }
+.planner-wait-btn:disabled { opacity: 0.35; }
+.planner-wait-v { flex: 1; display: flex; flex-direction: column; min-width: 0; text-align: center; }
+.planner-wait-v .v { font-size: 16px; font-variant-numeric: tabular-nums; text-align: center; }
+.planner-wait-v small { font-size: 11px; line-height: 1.2; color: var(--chalk-dim); }
+.planner-wait-v small b { color: var(--chalk); font-weight: 600; }
+
 .planner-dv { display: flex; gap: 12px; }
 .planner-dv > div { flex: 1; display: flex; flex-direction: column; }
 .planner-dv .v { text-align: left; font-size: 18px; }
@@ -133,6 +155,8 @@
   .planner-at button { padding: 3px 6px; }
   .planner-at button small { display: inline; margin-left: 4px; }
   .planner-dv .v { font-size: 16px; }
+  .planner-wait { margin: 0 0 4px; }
+  .planner-wait-btn { height: 26px; }
   .planner-result { min-height: 0; margin: 2px 0 4px; }
   .planner-actions .btn { font-size: 15px; padding: 4px 12px; }
 }

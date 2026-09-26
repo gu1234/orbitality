@@ -42,7 +42,7 @@ const coach = new Coach();
 const planner = new Planner();
 // glossary cards: time stands still while one is open
 const terms = new TermCard({ open: () => input.releaseAllBurns() });
-const plannerPanel = new PlannerPanel(planner, $('flight'), { approve: approvePlan, cancel: cancelPlan, close: togglePlanner });
+const plannerPanel = new PlannerPanel(planner, $('flight'), { approve: approvePlan, cancel: cancelPlan, close: togglePlanner, fine: () => input.fineOn() });
 
 const app = {
   mode: 'menu', // menu | brief | flying | paused | result | grad
@@ -858,6 +858,15 @@ window.addEventListener('keydown', (e) => {
   e.preventDefault();
   togglePlanner();
 });
+// while planning, [ and ] move the burn sooner or later (held, they speed up)
+const WAIT_KEYS = { BracketLeft: -1, BracketRight: 1 };
+window.addEventListener('keydown', (e) => {
+  const sign = WAIT_KEYS[e.code];
+  if (!sign || e.metaKey || e.ctrlKey || e.altKey || app.mode !== 'flying' || !planner.open || terms.isOpen) return;
+  e.preventDefault();
+  if (!e.repeat) planner.pressWait(sign, e.shiftKey || input.fineOn());
+});
+window.addEventListener('keyup', (e) => { if (WAIT_KEYS[e.code]) planner.releaseWait(); });
 $('btn-sandbox').addEventListener('click', () => startLevel(SANDBOX));
 $('btn-glossary').addEventListener('click', () => terms.openIndex());
 $('pause-glossary').addEventListener('click', () => terms.openIndex());
