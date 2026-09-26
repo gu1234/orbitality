@@ -16,6 +16,7 @@ const COL = {
 const TWO_PI = Math.PI * 2;
 const LABEL_FONT = '500 13px "Barlow Condensed", "Arial Narrow", sans-serif';
 const LABEL_FONT_BIG = '600 15px "Barlow Condensed", "Arial Narrow", sans-serif';
+const reducedMotion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
 
 function rgba(hex, a) {
   const n = parseInt(hex.slice(1), 16);
@@ -695,6 +696,22 @@ export class Renderer {
     if (burnDir && u) { hx = u.x; hy = u.y; }
     const ang = Math.atan2(-hy, hx);
 
+    // "this is you": a dark backing disc lifts the ship off its own orbit line,
+    // and a sonar ring keeps rolling out of it
+    if (ui.showNames) {
+      ctx.fillStyle = rgba(COL.field, 0.6);
+      ctx.beginPath(); ctx.arc(x, y, 16, 0, TWO_PI); ctx.fill();
+      ctx.strokeStyle = rgba(COL.ship, 0.55);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x, y, 16, 0, TWO_PI); ctx.stroke();
+      if (!reducedMotion?.matches) {
+        const k = (performance.now() / 1600) % 1;
+        ctx.strokeStyle = rgba(COL.ship, 0.7 * (1 - k));
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, 16 + 22 * k, 0, TWO_PI); ctx.stroke();
+      }
+    }
+
     // thrust direction guide
     if (u) {
       const L = 46;
@@ -731,10 +748,10 @@ export class Renderer {
       ctx.fill();
     }
     ctx.beginPath();
-    ctx.moveTo(11, 0);
-    ctx.lineTo(-7, -7);
-    ctx.lineTo(-3, 0);
-    ctx.lineTo(-7, 7);
+    ctx.moveTo(13, 0);
+    ctx.lineTo(-8, -8);
+    ctx.lineTo(-3.5, 0);
+    ctx.lineTo(-8, 8);
     ctx.closePath();
     ctx.fillStyle = COL.ship;
     ctx.strokeStyle = COL.field;
@@ -742,6 +759,11 @@ export class Renderer {
     ctx.fill();
     ctx.stroke();
     ctx.restore();
+    // name tag on the outside of the orbit, clear of a target sharing the orbit line
+    if (ui.showNames) {
+      const r = Math.hypot(s.x, s.y) || 1;
+      this.label('You', x + (s.x / r) * 34, y - (s.y / r) * 34, COL.ship, 'center', LABEL_FONT_BIG);
+    }
   }
 
   drawEffects(world, cam, dt) {
