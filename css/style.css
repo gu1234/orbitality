@@ -340,6 +340,7 @@ button:focus-visible, summary:focus-visible {
   border: 1px solid var(--hair);
 }
 .chip:active { background: var(--panel-solid); }
+.chip.lock-chip.on { background: var(--ship); border-color: var(--ship); color: var(--field); }
 
 /* ---------------------------------------------------------------- controls */
 

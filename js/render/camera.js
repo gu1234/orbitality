@@ -99,11 +99,11 @@ export class Camera {
   }
 
   /**
-   * Fit absolute points (each with an optional radius) into a screen rectangle
-   * { x0, y0, x1, y1 } (defaults to the whole screen), keeping the current focus.
+   * The scale and offset that fit absolute points (each with an optional radius) into a
+   * screen rectangle { x0, y0, x1, y1 } (defaults to the whole screen), keeping the current focus.
    */
-  fitPoints(world, pts, { rect = null, pad = 0.1, dur = 0.5, instant = false } = {}) {
-    if (!pts.length) return;
+  fitView(world, pts, { rect = null, pad = 0.1 } = {}) {
+    if (!pts.length) return null;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const p of pts) {
       const r = p.r || 0;
@@ -119,13 +119,50 @@ export class Camera {
     const fx = (R.x0 + R.x1) / 2, fy = (R.y0 + R.y1) / 2;
     const ox = (x0 + x1) / 2 - f.x - (fx - this.w / 2) / s;
     const oy = (y0 + y1) / 2 - f.y + (fy - this.h / 2) / s;
+    return { scale: s, offX: ox, offY: oy };
+  }
+
+  /** Fit points into a screen rectangle, animated or instantly (see fitView). */
+  fitPoints(world, pts, { rect = null, pad = 0.1, dur = 0.5, instant = false } = {}) {
+    const v = this.fitView(world, pts, { rect, pad });
+    if (!v) return;
     if (instant) {
       this.anim = null;
-      this.scale = s;
-      this.offX = ox;
-      this.offY = oy;
+      this.scale = v.scale;
+      this.offX = v.offX;
+      this.offY = v.offY;
     } else {
-      this.animateTo(s, ox, oy, dur);
+      this.animateTo(v.scale, v.offX, v.offY, dur);
     }
+  }
+
+  /**
+   * Track a view from fitView every frame for a locked frame. It eases in over about a
+   * second after restartFollow(), then tracks exactly so time warp can't outrun it.
+   * Scale eases in log space.
+   */
+  follow(view, realDt) {
+    if (!view) return;
+    this.anim = null;
+    this.followT = Math.min(1, (this.followT ?? 0) + realDt);
+    const u = this.followT;
+    const k = Math.max(1 - Math.exp(-6 * realDt), u * u * (3 - 2 * u));
+    this.scale = Math.exp(Math.log(this.scale) + (Math.log(view.scale) - Math.log(this.scale)) * k);
+    this.offX += (view.offX - this.offX) * k;
+    this.offY += (view.offY - this.offY) * k;
+  }
+
+  /** Ease into the followed view again, e.g. when what is being framed changes. */
+  restartFollow() {
+    this.followT = 0;
+  }
+
+  /** Change focus without moving the view: the offset absorbs the jump between focuses. */
+  refocus(world, focus) {
+    const before = this.focusPos(world);
+    this.focus = focus;
+    const after = this.focusPos(world);
+    this.offX += before.x - after.x;
+    this.offY += before.y - after.y;
   }
 }

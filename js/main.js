@@ -58,6 +58,7 @@ const app = {
   lastBurnDir: null,
   fuelWarned: false,
   realDt: 0,
+  frameLock: false, // camera keeps the ship and target framed as they move
 };
 
 // ------------------------------------------------------------------ setup
@@ -444,6 +445,7 @@ function cycleFocus() {
 
 function setFocus(f) {
   const w = app.world;
+  unlockByHand();
   cam.setFocus(f);
   if (f.kind === 'body' && f.id === 'sun') {
     const far = w.target?.body.parent === w.body('sun') ? w.target.body.a : w.body('earth').a;
@@ -457,6 +459,11 @@ function setFocus(f) {
 }
 
 function frame() {
+  cam.fitPoints(app.world, framePoints(), { rect: freeRect(), pad: 0.08 });
+}
+
+/** What Frame fits: the ship and the target, or the ship's orbit when the target is elsewhere. */
+function framePoints() {
   const w = app.world;
   const pts = [];
   const s = w.shipAbs();
@@ -474,7 +481,41 @@ function frame() {
     const r = el.e < 1 ? Math.min(el.ra, w.ship.body.soi) : Math.hypot(w.ship.x, w.ship.y);
     pts.push({ x: b.x, y: b.y, r: r * 1.05 });
   }
-  cam.fitPoints(w, pts, { rect: freeRect(), pad: 0.08 });
+  return pts;
+}
+
+/** Lock the frame: the camera follows the ship and target on its own until the player pans, zooms or refocuses. */
+function setFrameLock(on) {
+  if (app.frameLock === on) return;
+  app.frameLock = on;
+  app.frameKey = null;
+  const chip = $('btn-lock');
+  chip.classList.toggle('on', on);
+  chip.setAttribute('aria-pressed', String(on));
+}
+
+function toggleFrameLock() {
+  if (app.mode !== 'flying' || app.tut) return;
+  setFrameLock(!app.frameLock);
+  toast(app.frameLock ? 'Frame locked: the camera follows you and the target' : 'Frame unlocked', false, 1600);
+}
+
+/** Keep a locked frame on the ship and target. A change in what is framed (an SOI change,
+ *  closing in, a panel opening) eases over rather than snapping. */
+function followFrame(dt) {
+  const pts = framePoints();
+  const rect = freeRect();
+  const key = [app.world, cam.focus.kind, cam.focus.id, app.world.ship.body.id, pts.length, !!pts[0].r,
+    ...Object.values(rect).map(Math.round)].join();
+  if (key !== app.frameKey) { app.frameKey = key; cam.restartFollow(); }
+  cam.follow(cam.fitView(app.world, pts, { rect, pad: 0.08 }), dt);
+}
+
+/** Manual camera moves take over from a locked frame. */
+function unlockByHand() {
+  if (!app.frameLock || app.mode === 'menu') return;
+  setFrameLock(false);
+  toast('Frame unlocked', false, 1200);
 }
 
 /** Pick the nearest object near a screen point and focus it. */
@@ -714,6 +755,7 @@ function followSoi(from, to) {
   const f = cam.focus;
   if (f.kind === 'body' && f.id === from.toLowerCase()) {
     const w = app.world;
+    if (app.frameLock) { cam.refocus(w, { kind: 'body', id: to.toLowerCase() }); return; } // no jump
     cam.setFocus({ kind: 'body', id: to.toLowerCase() });
     const b = w.body(to.toLowerCase());
     const r = Math.hypot(w.ship.x, w.ship.y);
@@ -724,8 +766,8 @@ function followSoi(from, to) {
 // ------------------------------------------------------------------ input wiring
 
 const input = new Input(canvas, {
-  pan: (dx, dy) => cam.pan(dx, dy),
-  zoomAt: (f, x, y) => cam.zoomAt(f, x, y),
+  pan: (dx, dy) => { unlockByHand(); cam.pan(dx, dy); },
+  zoomAt: (f, x, y) => { unlockByHand(); cam.zoomAt(f, x, y); },
   tap: (x, y) => { closeWarpMenu(); if (app.mode === 'flying') pick(x, y); },
   doubleTap: () => { if (app.mode === 'flying') frame(); },
   hover: (dir) => { app.hoverDir = dir; },
@@ -763,6 +805,7 @@ const input = new Input(canvas, {
   warpStop: () => { if (app.mode === 'flying') app.world.setWarpIndex(0); },
   cycleFocus: () => { if (app.mode === 'flying') cycleFocus(); },
   frame: () => { if (app.mode === 'flying') frame(); },
+  toggleLock: () => toggleFrameLock(),
   toggleTip: () => { if (app.mode === 'flying') toggleTip(); },
   toggleMusic: () => toggleMusic(),
   escape: () => {
@@ -787,6 +830,7 @@ $('warp-up').addEventListener('click', () => warpStep(1));
 $('warp-value').addEventListener('click', openWarpMenu);
 $('btn-focus').addEventListener('click', cycleFocus);
 $('btn-frame').addEventListener('click', frame);
+$('btn-lock').addEventListener('click', toggleFrameLock);
 $('btn-plan').addEventListener('click', togglePlanner);
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'KeyB' || e.repeat || e.metaKey || e.ctrlKey || e.altKey || app.mode !== 'flying') return;
@@ -942,6 +986,7 @@ function loop(now) {
 
   if (!w.burn.dir) app.ghostAlpha = Math.max(0, app.ghostAlpha - dt / 2.5);
   w.refreshPrediction();
+  if (app.frameLock && app.mode !== 'menu' && !app.tut) followFrame(dt);
   cam.update(w, dt);
   renderer.draw(w, cam, {
     prediction: w.prediction,

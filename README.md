@@ -29,6 +29,7 @@ Add `?all` to the URL to unlock every level while testing.
 | Pan | drag | drag |
 | Focus an object | tap it, or the focus chip | F |
 | Frame ship + target | **Frame** chip or double-tap | Z |
+| Lock the frame (camera follows ship + target) | **Lock** chip | L |
 | Hints | ? button | H |
 | Pause | ‖ button | Esc |
 | Music on / off | ♪ button (menu, top bar or pause menu) | N |
