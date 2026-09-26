@@ -23,6 +23,7 @@
   animation: tooltip-in 0.12s ease-out;
 }
 .tooltip[hidden] { display: none; }
+.tooltip b { color: var(--ship); font-weight: 600; }
 .tooltip kbd {
   flex: none;
   margin-left: auto;
@@ -41,7 +42,7 @@
   .tooltip { animation: none; }
 }
 
-/* burn readout: "Shift for fine control" / "Fine control" */
+/* burn readout: "Shift key for fine control" / "Fine control" */
 .burn-readout .fine-hint {
   margin-top: 4px;
   font-family: var(--text);
@@ -56,5 +57,5 @@
   border-radius: 3px;
   font-family: var(--display);
   font-weight: 600;
-  color: var(--chalk);
+  color: var(--ship);
 }

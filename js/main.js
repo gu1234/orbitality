@@ -669,7 +669,7 @@ function updateBurnReadout() {
     let fine = '';
     if (hasKeyboardPointer.matches && app.lastBurnDir !== 'plan') {
       if (app.lastBurnFine) fine = '<small class="fine-hint on">Fine control</small>';
-      else if (!app.usedFine) fine = '<small class="fine-hint"><kbd>Shift</kbd> for fine control</small>';
+      else if (!app.usedFine) fine = '<small class="fine-hint"><kbd>Shift</kbd> key for fine control</small>';
     }
     const txt = `${fmtDv(app.lastBurnDv)}<small>${names[app.lastBurnDir]}</small>${fine}`;
     if (el.innerHTML !== txt) el.innerHTML = txt;

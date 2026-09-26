@@ -1,6 +1,6 @@
 // Hover tooltips for mouse users: what a control does, plus its keyboard shortcut.
-// Opt in with data-tip="..." (and data-key="W"); buttons with only an aria-label
-// fall back to it. Touch and pen never see them, and pressing a control hides its
+// Opt in with data-tip="..." (and data-key="W"); data-tip is authored in index.html and may
+// use <b> to pick out a key name. Buttons with only an aria-label fall back to it. Touch and pen never see them, and pressing a control hides its
 // tooltip until the pointer leaves it, so holding a burn stays uncluttered.
 
 const DELAY = 350;
@@ -26,7 +26,10 @@ export function initTooltips() {
 
   function show(b) {
     if (!b.isConnected || !b.getClientRects().length) return; // gone or display:none
-    tip.textContent = textFor(b);
+    const text = document.createElement('span'); // one flex item, so <b> stays inline
+    if (b.dataset.tip) text.innerHTML = b.dataset.tip;
+    else text.textContent = b.getAttribute('aria-label');
+    tip.replaceChildren(text);
     if (b.dataset.key) {
       const k = document.createElement('kbd');
       k.textContent = b.dataset.key;
