@@ -41,7 +41,7 @@
   .tooltip { animation: none; }
 }
 
-/* burn readout: "Hold Shift for fine control" / "Fine control" */
+/* burn readout: "Shift for fine control" / "Fine control" */
 .burn-readout .fine-hint {
   margin-top: 4px;
   font-family: var(--text);
