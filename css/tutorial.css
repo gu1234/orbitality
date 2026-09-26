@@ -43,11 +43,16 @@
 }
 .school .meta.done { color: var(--ok); }
 
-/* a nudge to take Flight School, and to trust it */
+/* a nudge to take Flight School, and to trust it: a footnote hanging off the card */
 .school-nudge {
-  margin: 0 0 10px;
-  max-width: 34em;
-  font-size: 14px;
+  margin: -17px 0 16px;
+  padding: 9px 12px 10px 14px;
+  border: 1px solid var(--hair);
+  border-top: 1px dashed var(--hair);
+  border-left: 2px solid var(--ship);
+  border-radius: 0 0 3px 3px;
+  background: rgba(255, 181, 71, 0.025);
+  font-size: 13px;
   line-height: 1.5;
   color: var(--chalk-dim);
 }
