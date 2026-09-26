@@ -1,0 +1,11 @@
+{
+  "name": "orbitality",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A 2D orbital mechanics game for building intuition about rendezvous, transfers and delta-v.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}

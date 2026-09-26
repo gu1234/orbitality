@@ -1,0 +1,121 @@
+/* Burn planner: the Plan chip, the planning panel (above the controls, where
+   the hint strip sits) and the one-line countdown once a plan is approved. */
+
+.chip.plan-chip { color: var(--ok); border-color: rgba(155, 227, 180, 0.4); }
+.chip.plan-chip.on { background: var(--ok); border-color: var(--ok); color: var(--field); }
+
+.planner, .planner-armed {
+  position: absolute;
+  left: var(--edge-l);
+  right: calc(var(--edge-r) + 96px);
+  bottom: calc(var(--edge-b) + var(--pad-h) + 10px);
+  max-width: 400px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--ok);
+  border-radius: 3px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.planner { padding: 6px 10px 8px; }
+
+.planner-head { display: flex; align-items: center; gap: 8px; }
+.planner-head h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ok);
+}
+.planner-paused {
+  flex: 1;
+  font-family: var(--display);
+  font-size: 13px;
+  color: var(--chalk-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.planner-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--chalk-dim);
+}
+.planner-close:active { background: rgba(235, 230, 216, 0.1); }
+
+.planner-at { display: flex; gap: 4px; margin: 4px 0 6px; }
+.planner-at button {
+  flex: 1;
+  font-family: var(--display);
+  font-size: 15px;
+  padding: 4px 6px;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  color: var(--chalk-dim);
+  line-height: 1.1;
+}
+.planner-at button small { display: block; font-size: 11px; color: var(--chalk-faint); font-variant-numeric: tabular-nums; }
+.planner-at button[aria-checked='true'] { border-color: var(--ok); color: var(--ok); background: rgba(155, 227, 180, 0.1); }
+.planner-at button:disabled { opacity: 0.35; }
+
+.planner-dv { display: flex; gap: 12px; }
+.planner-dv > div { flex: 1; display: flex; flex-direction: column; }
+.planner-dv .v { text-align: left; font-size: 18px; }
+.planner-dv > div:last-child .v { color: var(--ok); }
+
+.planner-result {
+  margin: 4px 0 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--chalk);
+  min-height: 2.8em;
+}
+.planner-result small { color: var(--chalk-dim); font-size: 12px; }
+.planner-result .plan, .planner-armed b { color: var(--ok); font-weight: 600; }
+.planner-result .bad { color: var(--warn); }
+
+.planner-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.planner-actions .btn { font-size: 16px; padding: 6px 14px; }
+.planner-actions .btn.primary { background: var(--ok); border-color: var(--ok); }
+.planner-actions .btn:disabled { opacity: 0.35; }
+
+.planner-armed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 10px;
+  font-family: var(--display);
+  font-size: 16px;
+}
+.planner-armed-text { flex: 1; }
+.planner-armed .btn { font-size: 15px; padding: 4px 12px; }
+
+/* while planning the pad shapes the plan instead of burning */
+#flight.planning .pad .burn svg { stroke: var(--ok); }
+#flight.planning .pad .burn svg .dot { fill: var(--ok); }
+#flight.planning .pad .burn.active, #flight.planning .pad .burn:active { background: var(--ok); border-color: var(--ok); }
+#flight.planning .pad .burn:active svg { stroke: var(--field); }
+#flight.planning .target-actions,
+#flight.planning .warp { opacity: 0.35; pointer-events: none; }
+#flight.planning .tip,
+#flight.plan-armed .tip { display: none; }
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .planner, .planner-armed {
+    left: calc(var(--edge-l) + var(--cell) * 3 + 20px);
+    right: calc(var(--edge-r) + 190px);
+    bottom: var(--edge-b);
+    margin: 0 auto;
+  }
+  .planner { padding: 4px 8px 6px; }
+  .planner-head h3 { font-size: 16px; }
+  .planner-close { width: 26px; height: 26px; }
+  .planner-at { margin: 2px 0 4px; }
+  .planner-at button { padding: 3px 6px; }
+  .planner-at button small { display: inline; margin-left: 4px; }
+  .planner-dv .v { font-size: 16px; }
+  .planner-result { min-height: 0; margin: 2px 0 4px; }
+  .planner-actions .btn { font-size: 15px; padding: 4px 12px; }
+}

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1f36">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="description" content="Orbitality: learn orbital mechanics by catching spacecraft. Rendezvous, Hohmann transfers, the Moon and Mars.">
+  <title>Orbitality</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1f36'/%3E%3Cellipse cx='16' cy='16' rx='12' ry='7' fill='none' stroke='%23ffb547' stroke-width='2' transform='rotate(-30 16 16)'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%233f7fdc'/%3E%3Ccircle cx='25' cy='10.5' r='2.2' fill='%23ff5fa2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/tutorial.css">
+  <link rel="stylesheet" href="css/planner.css">
+</head>
+<body>
+  <canvas id="view" aria-label="Orbit view"></canvas>
+
+  <!-- In-flight interface -->
+  <div id="flight" class="hidden">
+    <header class="topbar">
+      <button class="icon-btn" id="btn-pause" aria-label="Pause">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>
+      </button>
+      <div class="title-block">
+        <div class="level-name" id="hud-level"></div>
+        <div class="clock" id="hud-clock"></div>
+      </div>
+      <button class="icon-btn music-btn" id="btn-music" aria-label="Music" aria-pressed="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17V5l10-2v12"/><circle cx="6.5" cy="17" r="2.5"/><circle cx="16.5" cy="15" r="2.5"/><path class="slash" d="M3.5 3.5l17 17"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-hint" aria-label="Hints">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 9a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.1 1-1.1 1.8v.5M12 17.2v.1"/></svg>
+      </button>
+    </header>
+
+    <div class="upper">
+    <section class="panel telemetry" id="telemetry" aria-live="off">
+      <div class="row body-row"><span class="k">Orbiting</span><span class="v" id="t-body"></span></div>
+      <div class="row"><span class="k">Altitude</span><span class="v" id="t-alt"></span></div>
+      <div class="row"><span class="k">Speed</span><span class="v" id="t-speed"></span></div>
+      <div class="row" id="row-ap"><span class="k" id="t-ap-label">Apoapsis</span><span class="v" id="t-ap"></span></div>
+      <div class="row" id="row-pe"><span class="k" id="t-pe-label">Periapsis</span><span class="v" id="t-pe"></span></div>
+      <div class="row extra"><span class="k">Period</span><span class="v" id="t-period"></span></div>
+      <div class="fuel" id="fuel">
+        <div class="fuel-head"><span class="k" id="fuel-label">Δv used</span><span class="v" id="fuel-value"></span></div>
+        <div class="fuel-bar"><div class="fuel-fill" id="fuel-fill"></div></div>
+      </div>
+    </section>
+
+    <section class="panel target-panel" id="target-panel">
+      <div class="row"><span class="k">Target</span><span class="v" id="g-dist"></span></div>
+      <div class="row"><span class="k">Rel. speed</span><span class="v" id="g-rel"></span></div>
+      <div class="row"><span class="k" id="g-phase-label">Phase</span><span class="v" id="g-phase"></span></div>
+      <div class="row approach"><span class="k" id="g-ca-label">Closest</span><span class="v" id="g-ca"></span></div>
+      <div class="row approach-when"><span class="k"></span><span class="v" id="g-ca-when"></span></div>
+    </section>
+    </div>
+
+    <div class="tip" id="tip">
+      <button class="tip-nav" id="tip-prev" aria-label="Previous hint">‹</button>
+      <p id="tip-text"></p>
+      <button class="tip-nav" id="tip-next" aria-label="Next hint">›</button>
+      <button class="tip-close" id="tip-close" aria-label="Hide hints">×</button>
+    </div>
+
+    <section class="coach hidden" id="coach" aria-labelledby="coach-title">
+      <div class="coach-head">
+        <span class="coach-count" id="coach-count"></span>
+        <h3 id="coach-title"></h3>
+        <button class="coach-min" id="coach-min" aria-label="Hide explanation" aria-expanded="true">−</button>
+      </div>
+      <p id="coach-text" aria-live="polite"></p>
+      <p class="coach-note hidden" id="coach-note" aria-live="polite"></p>
+      <div class="coach-goal">
+        <span class="coach-check" aria-hidden="true"></span>
+        <span class="coach-goal-text"><span id="coach-goal-text"></span><span class="coach-progress" id="coach-progress"></span></span>
+        <button class="btn primary" id="coach-next" disabled>Next</button>
+      </div>
+    </section>
+
+    <div class="view-tools">
+      <button class="chip plan-chip" id="btn-plan" aria-label="Plan a burn" aria-pressed="false">Plan</button>
+      <button class="chip" id="btn-focus" aria-label="Change camera focus">Earth</button>
+      <button class="chip" id="btn-frame" aria-label="Frame ship and target">Frame</button>
+    </div>
+
+    <div class="burn-readout" id="burn-readout"></div>
+    <div class="toast" id="toast"></div>
+
+    <footer class="controls">
+      <div class="pad" id="pad" role="group" aria-label="Burn directions">
+        <button class="burn pro" data-burn="prograde" aria-label="Prograde burn">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="7"/><path d="M20 4v9M9 27l-5 4M31 27l5 4"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg>
+          <span>Prograde</span>
+        </button>
+        <button class="burn rin" data-burn="radialIn" aria-label="Radial in burn">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="11"/><path d="M11 11l5 5M29 11l-5 5M11 29l5-5M29 29l-5-5"/></svg>
+          <span>Radial in</span>
+        </button>
+        <div class="pad-center" id="pad-center">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 8l7 22-7-5-7 5z"/></svg>
+        </div>
+        <button class="burn rout" data-burn="radialOut" aria-label="Radial out burn">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="7"/><path d="M15 15l-7-7M25 15l7-7M15 25l-7 7M25 25l7 7"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg>
+          <span>Radial out</span>
+        </button>
+        <button class="burn retro" data-burn="retrograde" aria-label="Retrograde burn">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="7"/><path d="M15 15l10 10M25 15L15 25M20 27v9M9 13l-5-4M31 13l5-4"/></svg>
+          <span>Retrograde</span>
+        </button>
+      </div>
+
+      <div class="right-controls">
+        <div class="target-actions" id="target-actions">
+          <button class="burn tgt" data-burn="toward" aria-label="Burn toward target"><span>Toward</span></button>
+          <button class="burn tgt" data-burn="match" aria-label="Match target velocity"><span>Match</span></button>
+        </div>
+        <div class="warp">
+          <button class="icon-btn" id="warp-down" aria-label="Slower time">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
+          </button>
+          <button class="warp-value" id="warp-value" aria-label="Time warp. Tap for warp-to options"></button>
+          <button class="icon-btn" id="warp-up" aria-label="Faster time">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <div class="warp-menu hidden" id="warp-menu" role="menu"></div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Menu -->
+  <div id="menu" class="screen">
+    <button class="icon-btn music-btn menu-music" id="menu-music" aria-label="Music" aria-pressed="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17V5l10-2v12"/><circle cx="6.5" cy="17" r="2.5"/><circle cx="16.5" cy="15" r="2.5"/><path class="slash" d="M3.5 3.5l17 17"/></svg>
+    </button>
+    <div class="menu-inner">
+      <h1 class="wordmark">Orbitality</h1>
+      <p class="tagline">Get a feel for orbital mechanics by catching other spacecraft. Your first lesson: to catch up with something ahead of you in orbit, you slow down.</p>
+      <button class="school" id="btn-school">
+        <span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32"><ellipse cx="16" cy="16" rx="13" ry="8" transform="rotate(-30 16 16)"/><circle cx="16" cy="16" r="3.5" class="dot"/><path d="M26.5 6.5l1 4.2-4.2 1"/></svg></span>
+        <span><span class="name">Flight School</span><span class="concept">The basics: prograde, retrograde, apoapsis, periapsis, perihelion and aphelion</span></span>
+        <span class="meta" id="school-meta"></span>
+      </button>
+      <ol class="level-list" id="level-list"></ol>
+      <button class="sandbox-btn" id="btn-sandbox">Free flight sandbox</button>
+      <p class="fineprint">Hold a burn button to thrust. Longer holds burn harder. Pinch or scroll to zoom, drag to look around.</p>
+      <p class="fineprint credits">Planet imagery: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a>, CC BY 4.0, reprojected to a top-down view.</p>
+    </div>
+  </div>
+
+  <!-- Briefing -->
+  <div id="brief" class="screen modal hidden" role="dialog" aria-labelledby="brief-title">
+    <div class="card">
+      <div class="card-kicker" id="brief-concept"></div>
+      <h2 id="brief-title"></h2>
+      <p id="brief-text"></p>
+      <div class="budget" id="brief-budget"></div>
+      <details class="hints" id="brief-hints">
+        <summary>How to do it</summary>
+        <ol id="brief-hint-list"></ol>
+      </details>
+      <div class="legend" id="brief-legend">
+        <span class="swatch you"></span>You
+        <span class="swatch them"></span>Target
+        <span class="swatch path"></span>Closest approach
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="brief-back">Levels</button>
+        <button class="btn primary" id="brief-start">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div id="pause" class="screen modal hidden" role="dialog" aria-labelledby="pause-title">
+    <div class="card narrow">
+      <h2 id="pause-title">Paused</h2>
+      <div class="stack">
+        <button class="btn primary" id="pause-resume">Resume</button>
+        <button class="btn" id="pause-brief">Mission briefing</button>
+        <button class="btn" id="pause-restart">Restart level</button>
+        <button class="btn" id="pause-music" data-text>Music: on</button>
+        <button class="btn ghost" id="pause-levels">All levels</button>
+      </div>
+      <p class="keys">Keys: W/S prograde and retrograde, A/D radial in and out, T toward, M match, Shift for fine burns, B to plan a burn, &lt; and &gt; for warp, F to change focus, N for music, Esc to pause.</p>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="result" class="screen modal hidden" role="dialog" aria-labelledby="result-title">
+    <div class="card">
+      <div class="stars" id="result-stars" aria-hidden="true"></div>
+      <h2 id="result-title"></h2>
+      <p class="result-sub" id="result-sub"></p>
+      <p class="lesson" id="result-lesson"></p>
+      <div class="actions">
+        <button class="btn ghost" id="result-levels">Levels</button>
+        <button class="btn" id="result-retry">Retry</button>
+        <button class="btn primary" id="result-next">Next level</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flight School complete -->
+  <div id="grad" class="screen modal hidden" role="dialog" aria-labelledby="grad-title">
+    <div class="card">
+      <div class="card-kicker">Flight School complete</div>
+      <h2 id="grad-title">You speak orbit</h2>
+      <p>Here is everything in one place. The first level puts prograde and retrograde to work.</p>
+      <dl class="glossary" id="grad-glossary"></dl>
+      <div class="actions">
+        <button class="btn ghost" id="grad-levels">Levels</button>
+        <button class="btn" id="grad-replay">Replay</button>
+        <button class="btn primary" id="grad-next">Level 1</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

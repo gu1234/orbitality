@@ -1,0 +1,227 @@
+/* Flight School: menu entry, coach panel, control highlights and the closing glossary. */
+
+/* ---------------------------------------------------------------- menu entry */
+
+.school {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 12px 10px 12px 4px;
+  text-align: left;
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--ship);
+  border-radius: 3px;
+  background: rgba(255, 181, 71, 0.05);
+}
+.school:hover, .school:focus-visible { background: rgba(255, 181, 71, 0.1); }
+.school .mark { display: grid; place-items: center; }
+.school .mark svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--ship);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.school .mark svg .dot { fill: var(--ship); stroke: none; }
+.school .name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 21px;
+  line-height: 1.15;
+  display: block;
+}
+.school .concept { display: block; font-size: 14px; color: var(--chalk-dim); margin-top: 1px; }
+.school .meta {
+  font-family: var(--display);
+  font-size: 15px;
+  color: var(--ship);
+  white-space: nowrap;
+}
+.school .meta.done { color: var(--ok); }
+
+/* ---------------------------------------------------------------- coach panel */
+
+.coach {
+  position: absolute;
+  top: calc(var(--edge-t) + 48px);
+  right: var(--edge-r);
+  width: min(360px, calc(100% - var(--edge-l) - var(--edge-r)));
+  /* stays clear of the focus/frame chips and the warp control below it */
+  max-height: calc(100% - var(--edge-t) - 48px - var(--edge-b) - var(--right-h) - 96px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(12, 26, 46, 0.9);
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--ship);
+  border-radius: 3px;
+  padding: 10px 10px 10px 14px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.coach-head { display: flex; align-items: center; gap: 10px; }
+.coach-count {
+  font-family: var(--display);
+  font-size: 14px;
+  color: var(--chalk-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.coach h3 {
+  flex: 1;
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 23px;
+  line-height: 1.05;
+}
+.coach-min {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--chalk-dim);
+}
+.coach-min:active { background: rgba(235, 230, 216, 0.1); }
+
+.coach p { margin: 0; font-size: 14px; line-height: 1.5; }
+.coach b { color: var(--ship); font-weight: 600; }
+.coach.met #coach-text { border-left: 2px solid var(--ok); padding-left: 10px; }
+.coach.collapsed #coach-text { display: none; }
+
+.coach-note {
+  border-left: 2px solid var(--warn);
+  padding-left: 10px;
+}
+
+.coach-goal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hair);
+}
+.coach-check {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--chalk-dim);
+  border-radius: 50%;
+}
+.coach.met .coach-check { background: var(--ok); border-color: var(--ok); }
+.coach.met .coach-check::after {
+  content: '';
+  width: 8px;
+  height: 4px;
+  border: solid var(--field);
+  border-width: 0 0 2px 2px;
+  transform: translateY(-1px) rotate(-45deg);
+}
+.coach-goal-text {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--display);
+  font-size: 16px;
+  line-height: 1.25;
+}
+.coach.met .coach-goal-text { color: var(--chalk-dim); }
+.coach.met .coach-goal-text b { color: inherit; }
+.coach-progress {
+  display: block;
+  font-size: 14px;
+  color: var(--chalk-dim);
+  font-variant-numeric: tabular-nums;
+}
+.coach-progress:empty { display: none; }
+.coach .btn { min-height: 38px; padding: 6px 16px; font-size: 17px; flex: none; }
+.coach .btn:disabled { opacity: 0.35; cursor: default; filter: none; transform: none; }
+
+/* controls the current step talks about */
+.coach-hl { animation: coach-hl 1.6s ease-in-out infinite; }
+.row.coach-hl { animation-name: coach-hl-row; border-radius: 2px; }
+.pad-center.coach-hl { border-radius: 50%; }
+@keyframes coach-hl {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 181, 71, 0); }
+  50% { box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.6), 0 0 18px 2px rgba(255, 181, 71, 0.35); }
+}
+@keyframes coach-hl-row {
+  0%, 100% { background: rgba(255, 181, 71, 0); }
+  50% { background: rgba(255, 181, 71, 0.18); }
+}
+
+/* ---------------------------------------------------------------- closing card */
+
+.glossary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 16px;
+  margin: 0 0 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.glossary dt {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ship);
+  white-space: nowrap;
+}
+.glossary dd { margin: 0; color: var(--chalk); }
+
+/* ---------------------------------------------------------------- small screens */
+
+@media (max-width: 560px) {
+  /* full width, above the pad and the focus/frame chips */
+  .coach {
+    top: auto;
+    left: var(--edge-l);
+    width: auto;
+    bottom: calc(var(--edge-b) + var(--right-h) + 94px);
+    max-height: 40vh;
+    padding: 8px 8px 8px 12px;
+    gap: 6px;
+  }
+  .coach h3 { font-size: 20px; }
+  .coach p { font-size: 13px; line-height: 1.45; }
+  .coach-goal { padding-top: 6px; }
+  .coach-goal-text { font-size: 15px; }
+  .coach-progress { font-size: 13px; }
+  .glossary { grid-template-columns: 1fr; gap: 0; }
+  .glossary dd { margin-bottom: 8px; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  /* no room for the chips next to the coach: double-tap still frames the view */
+  #flight.tutorial .view-tools { display: none; }
+  .coach {
+    top: calc(var(--edge-t) + 40px);
+    width: min(340px, 44vw);
+    max-height: calc(100% - var(--edge-t) - 40px - var(--edge-b) - 68px);
+    padding: 7px 8px 7px 12px;
+    gap: 6px;
+  }
+  .coach h3 { font-size: 19px; }
+  .coach p { font-size: 13px; line-height: 1.4; }
+  .coach-goal-text { font-size: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach-hl { animation: none; box-shadow: 0 0 0 2px var(--ship); }
+  .row.coach-hl { box-shadow: none; background: rgba(255, 181, 71, 0.18); }
+}
