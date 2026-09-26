@@ -169,6 +169,7 @@ export class Input {
         case '.': case '>': case '=': case '+': this.h.warpStep(1); break;
         case 'f': case 'F': this.h.cycleFocus(); break;
         case 'z': case 'Z': this.h.frame(); break;
+        case 'l': case 'L': this.h.toggleLock(); break;
         case 'h': case 'H': case '?': this.h.toggleTip(); break;
         case 'n': case 'N': this.h.toggleMusic(); break;
         case 'Escape': case 'p': case 'P': this.h.escape(); break;
