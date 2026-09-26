@@ -629,6 +629,16 @@ button:focus-visible, summary:focus-visible {
   border-radius: 22px;
 }
 .sandbox-btn:hover { background: rgba(235, 230, 216, 0.06); }
+.reset-btn {
+  margin-left: 10px;
+  padding: 10px 6px;
+  font-size: 14px;
+  color: var(--chalk-faint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.reset-btn:hover { color: var(--chalk-dim); }
+.reset-btn.armed { color: var(--warn); text-decoration: none; font-weight: 600; }
 
 .fineprint { margin-top: 22px; font-size: 13px; line-height: 1.5; color: var(--chalk-faint); max-width: 34em; }
 .fineprint.credits { margin-top: 8px; }

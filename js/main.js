@@ -119,6 +119,7 @@ function renderMenu() {
   const meta = $('school-meta');
   meta.textContent = schooled ? '✓ Done' : progress.completed(LEVELS[0].id) ? '' : 'Start here';
   meta.classList.toggle('done', schooled);
+  $('btn-reset').classList.toggle('hidden', !progress.any());
 }
 
 function showMenu() {
@@ -769,6 +770,26 @@ window.addEventListener('keydown', (e) => {
   togglePlanner();
 });
 $('btn-sandbox').addEventListener('click', () => startLevel(SANDBOX));
+// two taps to wipe progress: the first arms the button for a few seconds
+let resetTimer = 0;
+function disarmReset() {
+  clearTimeout(resetTimer);
+  const b = $('btn-reset');
+  b.classList.remove('armed');
+  b.textContent = 'Reset progress';
+}
+$('btn-reset').addEventListener('click', () => {
+  const b = $('btn-reset');
+  if (!b.classList.contains('armed')) {
+    b.classList.add('armed');
+    b.textContent = 'Tap again to erase all stars';
+    resetTimer = setTimeout(disarmReset, 4000);
+    return;
+  }
+  disarmReset();
+  progress.reset();
+  renderMenu();
+});
 $('brief-start').addEventListener('click', () => setMode('flying'));
 $('brief-back').addEventListener('click', showMenu);
 $('pause-resume').addEventListener('click', () => setMode('flying'));

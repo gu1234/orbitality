@@ -27,6 +27,11 @@ export const progress = {
     }
   },
   completed(id) { return (state.stars[id] || 0) > 0; },
+  any() { return Object.keys(state.stars).length > 0; },
+  reset() {
+    state = { stars: {} };
+    try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+  },
 };
 
 /** Stars for a catch: 3 within par, 2 within 1.5x par, else 1. */
