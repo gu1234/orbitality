@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="css/tutorial.css">
   <link rel="stylesheet" href="css/planner.css">
   <link rel="stylesheet" href="css/tooltip.css">
+  <link rel="stylesheet" href="css/terms.css">
 </head>
 <body>
   <canvas id="view" aria-label="Orbit view"></canvas>
@@ -40,23 +41,23 @@
 
     <div class="upper">
     <section class="panel telemetry" id="telemetry" aria-live="off">
-      <div class="row body-row"><span class="k">Orbiting</span><span class="v" id="t-body"></span></div>
+      <div class="row body-row"><span class="k term" data-term="soi" role="button" tabindex="0">Orbiting</span><span class="v" id="t-body"></span></div>
       <div class="row"><span class="k">Altitude</span><span class="v" id="t-alt"></span></div>
       <div class="row"><span class="k">Speed</span><span class="v" id="t-speed"></span></div>
-      <div class="row" id="row-ap"><span class="k" id="t-ap-label">Apoapsis</span><span class="v" id="t-ap"></span></div>
-      <div class="row" id="row-pe"><span class="k" id="t-pe-label">Periapsis</span><span class="v" id="t-pe"></span></div>
-      <div class="row extra"><span class="k">Period</span><span class="v" id="t-period"></span></div>
+      <div class="row" id="row-ap"><span class="k term" data-term="apoapsis" role="button" tabindex="0" id="t-ap-label">Apoapsis</span><span class="v" id="t-ap"></span></div>
+      <div class="row" id="row-pe"><span class="k term" data-term="periapsis" role="button" tabindex="0" id="t-pe-label">Periapsis</span><span class="v" id="t-pe"></span></div>
+      <div class="row extra"><span class="k term" data-term="period" role="button" tabindex="0">Period</span><span class="v" id="t-period"></span></div>
       <div class="fuel" id="fuel">
-        <div class="fuel-head"><span class="k" id="fuel-label">Δv used</span><span class="v" id="fuel-value"></span></div>
+        <div class="fuel-head"><span class="k term" data-term="delta-v" role="button" tabindex="0" id="fuel-label">Δv used</span><span class="v" id="fuel-value"></span></div>
         <div class="fuel-bar"><div class="fuel-fill" id="fuel-fill"></div></div>
       </div>
     </section>
 
     <section class="panel target-panel" id="target-panel">
       <div class="row"><span class="k">Target</span><span class="v" id="g-dist"></span></div>
-      <div class="row"><span class="k">Rel. speed</span><span class="v" id="g-rel"></span></div>
-      <div class="row"><span class="k" id="g-phase-label">Phase</span><span class="v" id="g-phase"></span></div>
-      <div class="row approach"><span class="k" id="g-ca-label">Closest</span><span class="v" id="g-ca"></span></div>
+      <div class="row"><span class="k term" data-term="relative-velocity" role="button" tabindex="0">Rel. speed</span><span class="v" id="g-rel"></span></div>
+      <div class="row"><span class="k term" data-term="phase-angle" role="button" tabindex="0" id="g-phase-label">Phase</span><span class="v" id="g-phase"></span></div>
+      <div class="row approach"><span class="k term" data-term="closest" role="button" tabindex="0" id="g-ca-label">Closest</span><span class="v" id="g-ca"></span></div>
       <div class="row approach-when"><span class="k"></span><span class="v" id="g-ca-when"></span></div>
     </section>
     </div>
@@ -159,7 +160,9 @@
       <p class="school-nudge" id="school-nudge"><b>Friendly warning:</b> your instincts learned physics from cars, bikes and shopping trolleys, and none of those orbit anything. Up here, speeding up makes you slower and braking gets you there sooner. Spend a few minutes at Flight School first and do exactly what it says, even when it sounds wrong. <i>Especially</i> when it sounds wrong.</p>
       <ol class="level-list" id="level-list"></ol>
       <button class="sandbox-btn" id="btn-sandbox">Free flight sandbox</button>
+      <button class="sandbox-btn glossary-btn" id="btn-glossary">Glossary</button>
       <button class="reset-btn" id="btn-reset">Reset progress</button>
+      <p class="fineprint term-hint">Words with a <span class="term-sample">dotted underline</span> open an explanation with an animation. Tap one to see what it means.</p>
       <p class="fineprint">Hold a burn button to thrust. Longer holds burn harder. Pinch or scroll to zoom, drag to look around.</p>
       <p class="fineprint credits">Planet imagery: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a>, CC BY 4.0, reprojected to a top-down view.</p>
       <p class="fineprint version" id="menu-version"></p>
@@ -212,6 +215,7 @@
         <button class="btn" id="pause-brief">Mission briefing</button>
         <button class="btn" id="pause-restart">Restart level</button>
         <button class="btn" id="pause-music" data-text>Music: on</button>
+        <button class="btn" id="pause-glossary">Glossary</button>
         <button class="btn ghost" id="pause-levels">All levels</button>
       </div>
       <p class="keys">Keys: W/S prograde and retrograde, A/D radial in and out, T toward, M match, Shift key for fine control, B to plan a burn, &lt; and &gt; for warp, F to change focus, N for music, Esc to pause.</p>

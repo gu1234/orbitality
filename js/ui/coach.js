@@ -1,6 +1,8 @@
 // Flight School coach panel: the current step's explanation, its goal with a
 // live readout, off-track notes, and pulsing highlights on the controls it names.
 
+import { setLinkedHtml } from './terms.js';
+
 const $ = (id) => document.getElementById(id);
 
 // on cramped screens the explanation folds away while the player is acting
@@ -13,6 +15,7 @@ export class Coach {
     this.el = $('coach');
     this.lit = [];
     this.collapsed = false;
+    this.note = ''; // HTML of the note shown (the element's own HTML has the term links in it)
   }
 
   show(step, i, n) {
@@ -20,8 +23,8 @@ export class Coach {
     el.classList.remove('hidden', 'met');
     $('coach-count').textContent = `${i + 1} / ${n}`;
     $('coach-title').textContent = step.title;
-    $('coach-text').innerHTML = step.text;
-    $('coach-goal-text').innerHTML = step.goal;
+    const seen = setLinkedHtml($('coach-text'), step.text);
+    setLinkedHtml($('coach-goal-text'), step.goal, seen);
     $('coach-next').textContent = i + 1 < n ? 'Next' : 'Finish';
     $('coach-next').disabled = true;
     this.update({ progress: null, note: null });
@@ -33,7 +36,7 @@ export class Coach {
   /** The goal is met: show what it taught and enable Next. */
   met(html) {
     this.el.classList.add('met');
-    $('coach-text').innerHTML = html;
+    setLinkedHtml($('coach-text'), html);
     $('coach-next').disabled = false;
     this.update({ note: null });
     this.setCollapsed(false);
@@ -51,7 +54,10 @@ export class Coach {
     if (note !== undefined) {
       const n = $('coach-note');
       const html = note || '';
-      if (n.innerHTML !== html) n.innerHTML = html;
+      if (this.note !== html) {
+        this.note = html;
+        setLinkedHtml(n, html);
+      }
       n.classList.toggle('hidden', !note);
     }
   }
