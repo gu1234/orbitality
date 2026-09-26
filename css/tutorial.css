@@ -43,7 +43,7 @@
 }
 .school .meta.done { color: var(--ok); }
 
-/* until Flight School is done: a nudge to take it, and to trust it */
+/* a nudge to take Flight School, and to trust it */
 .school-nudge {
   margin: 0 0 10px;
   max-width: 34em;

@@ -119,7 +119,6 @@ function renderMenu() {
   const meta = $('school-meta');
   meta.textContent = schooled ? '✓ Done' : progress.completed(LEVELS[0].id) ? '' : 'Start here';
   meta.classList.toggle('done', schooled);
-  $('school-nudge').classList.toggle('hidden', schooled);
 }
 
 function showMenu() {
