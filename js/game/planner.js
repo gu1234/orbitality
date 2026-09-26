@@ -1,6 +1,6 @@
 // Burn planner: dial in a burn (prograde and radial Δv, now or at the next
-// apoapsis or periapsis) with time paused, see the orbit it gives, then approve
-// it and let the ship fly it. The preview simulates the same finite burn the
+// apoapsis or periapsis, plus an optional wait) with time paused, see the orbit
+// it gives, then approve it and let the ship fly it. The preview simulates the same finite burn the
 // ship will fly (centred on the node, thrust following the velocity frame), so
 // the orbit you approve is the orbit you get.
 
@@ -21,6 +21,16 @@ const EXEC_TIME = 1.5;
 const EXEC_RATE_MIN = 3; // m/s per real second
 const EXEC_RATE_MAX = 2400;
 const SUBSTEP = 0.5; // s of game time, as in World.update
+
+// The wait before the burn is counted in orbits of the current orbit, so the same
+// control works in low orbit (90 min) and around the Sun (a year). On a path with
+// no period (escape, or leaving the SOI) it counts hours instead.
+const WAIT_TAP = 0.01; // units added by a single tap (a tenth of that in fine mode)
+const WAIT_RATE0 = 0.1; // units per real second when a hold starts
+const WAIT_RATE_MAX = 2000;
+const WAIT_RATE_FINE = 0.02;
+const WAIT_HOUR = 3600;
+const WAIT_MAX = 3 * 365.25 * 86400; // s: longer than any launch window takes to come round
 
 /** Unit thrust vector for `pro` m/s prograde plus `rad` m/s radial out, in the state's frame. */
 export function planVector(s, pro, rad) {
@@ -102,7 +112,7 @@ export class Planner {
   reset(world) {
     this.world = world;
     this.open = false;
-    this.armed = null; // approved and waiting: { pro, rad, dv, rate, startT, nodeT, at }
+    this.armed = null; // approved and waiting: { pro, rad, dv, rate, startT, nodeT, at, wait }
     this.clear();
   }
 
@@ -110,7 +120,9 @@ export class Planner {
   clear() {
     this.pro = 0; // m/s along prograde (negative is retrograde)
     this.rad = 0; // m/s radial out (negative is radial in)
+    this.wait = 0; // s of coasting after the chosen node before the burn
     this.hold = null;
+    this.waitHold = null;
     this.capped = false;
     this.dirty = true;
     this.result = null;
@@ -133,9 +145,33 @@ export class Planner {
     return opts;
   }
 
-  nodeTime() {
+  /** The node the wait counts from: now, or the next Ap or Pe. */
+  baseTime() {
     const n = this.nodes().find((o) => o.id === this.at);
     return n && n.ok ? n.t : this.world.t;
+  }
+
+  nodeTime() {
+    return this.baseTime() + Math.min(this.wait, this.maxWait());
+  }
+
+  /** What the wait is counted in: { s, orbits } — one orbit of the current orbit, else an hour. */
+  waitUnit() {
+    const w = this.world;
+    const el = w.shipElements();
+    if (el.e < 1 && el.ra < w.ship.body.soi) return { s: el.period, orbits: true };
+    return { s: WAIT_HOUR, orbits: false };
+  }
+
+  /**
+   * Longest wait (s) after the base node: the path must still be in this SOI and
+   * clear of the surface. An orbit that stays put can wait for years.
+   */
+  maxWait() {
+    const w = this.world;
+    const p0 = w.refreshPrediction()[0];
+    const end = p0.end === 'horizon' ? w.t + WAIT_MAX : p0.t1 - 1;
+    return Math.max(0, end - this.baseTime());
   }
 
   toggle() {
@@ -162,6 +198,28 @@ export class Planner {
   setAt(id) {
     if (!this.nodes().find((o) => o.id === id)?.ok) return;
     this.at = id;
+    this.wait = Math.min(this.wait, this.maxWait());
+    this.dirty = true;
+  }
+
+  // ---- the wait before the burn
+
+  /** Start a held change to the wait (sign +1 later, -1 sooner). */
+  pressWait(sign, fine) {
+    this.waitHold = { sign, t: 0, fine };
+    this.nudgeWait(sign * (fine ? WAIT_TAP / 10 : WAIT_TAP));
+  }
+
+  releaseWait() { this.waitHold = null; }
+
+  /** Change the wait by `units` of waitUnit(). */
+  nudgeWait(units) {
+    this.setWait(this.wait + units * this.waitUnit().s);
+  }
+
+  /** Set the wait in seconds, kept between zero and maxWait(). */
+  setWait(s) {
+    this.wait = Math.min(this.maxWait(), Math.max(0, s));
     this.dirty = true;
   }
 
@@ -174,7 +232,7 @@ export class Planner {
     return true;
   }
 
-  release() { this.hold = null; }
+  release() { this.hold = null; this.waitHold = null; }
 
   nudge(dir, amt) {
     if (dir === 'prograde') this.pro += amt;
@@ -200,6 +258,12 @@ export class Planner {
       const rate = h.fine ? RATE_FINE : Math.min(RATE_MAX, RATE0 * Math.pow(2, h.t / RATE_DOUBLING));
       this.nudge(h.dir, rate * realDt);
     }
+    const wh = this.waitHold;
+    if (wh) {
+      wh.t += realDt;
+      const rate = wh.fine ? WAIT_RATE_FINE : Math.min(WAIT_RATE_MAX, WAIT_RATE0 * Math.pow(2, wh.t / RATE_DOUBLING));
+      this.nudgeWait(wh.sign * rate * realDt);
+    }
     if (this.dirty) this.compute();
   }
 
@@ -209,8 +273,10 @@ export class Planner {
     this.dirty = false;
     const nodeT = this.nodeTime();
     const node = kepler(w.ship.x, w.ship.y, w.ship.vx, w.ship.vy, w.ship.body.gm, nodeT - w.t);
+    // where the target is at the burn, to compare with the angle the hints give
+    const phase = w.phaseInfo(nodeT, { body: w.ship.body, ...node });
     if (this.dv < 0.05) {
-      this.result = { empty: true, nodeT, node };
+      this.result = { empty: true, nodeT, node, phase };
       return this.result;
     }
     const sim = simulateBurn(w, this.pro, this.rad, nodeT);
@@ -222,7 +288,7 @@ export class Planner {
       w.prediction = pred;
       try { approach = w.computeApproach(); } finally { w.prediction = own; }
     }
-    this.result = { ...sim, nodeT, node, pred, approach, dvLeft: w.dvRemaining() - sim.dv };
+    this.result = { ...sim, nodeT, node, phase, pred, approach, dvLeft: w.dvRemaining() - sim.dv };
     return this.result;
   }
 
@@ -232,12 +298,20 @@ export class Planner {
   approve() {
     const r = this.open && !this.dirty ? this.result : this.compute();
     if (!r || r.empty || r.dv < 0.05) return false;
-    this.armed = { pro: this.pro, rad: this.rad, dv: r.dv, rate: execRate(r.dv), startT: r.startT, nodeT: r.nodeT, at: this.at, result: r };
+    this.armed = { pro: this.pro, rad: this.rad, dv: r.dv, rate: execRate(r.dv), startT: r.startT, nodeT: r.nodeT, at: this.at, wait: this.wait, result: r };
     this.close();
     return true;
   }
 
-  cancel() { this.armed = null; }
+  /** Drop an approved plan. Its burn time is kept as a wait, so reopening the planner brings it back. */
+  cancel() {
+    const a = this.armed;
+    this.armed = null;
+    if (!a || !this.world) return;
+    if (!this.nodes().find((o) => o.id === this.at)?.ok) this.at = 'now';
+    if (a.wait > 0) this.setWait(a.nodeT - this.baseTime());
+    this.dirty = true;
+  }
 
   /**
    * Every frame while flying: take the ship to an approved burn and start it.

@@ -1,5 +1,5 @@
-// Burn planner panel: where the burn happens, its prograde and radial parts,
-// what orbit it gives, and Approve. Once approved it shrinks to a one-line
+// Burn planner panel: where the burn happens (and how long to wait after it),
+// its prograde and radial parts, what orbit it gives, and Approve. Once approved it shrinks to a one-line
 // countdown with Cancel while the ship warps to the burn.
 
 import { fmtDist, fmtDv, fmtDur } from './format.js';
@@ -17,6 +17,12 @@ const HTML = `
     <button role="radio" data-at="ap">At Ap<small></small></button>
     <button role="radio" data-at="pe">At Pe<small></small></button>
   </div>
+  <div class="planner-wait">
+    <span class="k">Wait</span>
+    <button class="planner-wait-btn" id="plan-wait-less" aria-label="Burn sooner" data-tip="Burn sooner. Hold to go faster" data-key="[">−</button>
+    <span class="planner-wait-v"><span class="v" id="plan-wait"></span><small id="plan-when"></small></span>
+    <button class="planner-wait-btn" id="plan-wait-more" aria-label="Burn later" data-tip="Burn later. Hold to go faster" data-key="]">+</button>
+  </div>
   <div class="planner-dv">
     <div><span class="k">Prograde</span><span class="v" id="plan-pro"></span></div>
     <div><span class="k">Radial</span><span class="v" id="plan-rad"></span></div>
@@ -27,6 +33,15 @@ const HTML = `
     <button class="btn ghost" id="plan-clear">Clear</button>
     <button class="btn primary" id="plan-approve">Approve burn</button>
   </div>`;
+
+/** Wait in units of an orbit (or hours on a path with no period): "0", "0.35 orbit", "12.4 orbits". */
+function fmtWait(s, unit) {
+  const n = s / unit.s;
+  if (n < 0.0005) return '0';
+  const txt = n < 10 ? n.toFixed(n < 1 ? 3 : 2) : n < 1000 ? n.toFixed(1) : Math.round(n).toLocaleString('en-US');
+  if (!unit.orbits) return `${txt} h`;
+  return `${txt} ${n > 1.0005 ? 'orbits' : 'orbit'}`;
+}
 
 function signed(v) {
   if (Math.abs(v) < 0.05) return '0 m/s';
@@ -53,6 +68,19 @@ export class PlannerPanel {
     q('#plan-close').addEventListener('click', () => handlers.close());
     q('#plan-clear').addEventListener('click', () => { planner.clear(); planner.tick(0); this.render(true); });
     q('#plan-approve').addEventListener('click', () => handlers.approve());
+    // the wait buttons ramp up while held, like the burn buttons
+    for (const [id, sign] of [['#plan-wait-less', -1], ['#plan-wait-more', 1]]) {
+      const b = q(id);
+      b.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        b.setPointerCapture?.(e.pointerId);
+        planner.pressWait(sign, e.shiftKey || !!handlers.fine?.());
+      });
+      for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, () => planner.releaseWait());
+      b.addEventListener('contextmenu', (e) => e.preventDefault());
+      // keyboard activation (Enter / Space) arrives as a click with no pointer
+      b.addEventListener('click', (e) => { if (e.detail === 0) { planner.nudgeWait(sign * 0.01); planner.tick(0); } });
+    }
     this.armedEl.querySelector('#plan-cancel').addEventListener('click', () => handlers.cancel());
     this.last = '';
   }
@@ -75,7 +103,7 @@ export class PlannerPanel {
     }
     if (!open) return;
     const r = p.result;
-    const key = [p.pro, p.rad, p.at, r?.nodeT, p.capped].join();
+    const key = [p.pro, p.rad, p.at, p.wait, r?.nodeT, p.capped].join();
     if (!force && key === this.last) return;
     this.last = key;
 
@@ -86,11 +114,31 @@ export class PlannerPanel {
       const small = b.querySelector('small');
       if (small) small.textContent = n.ok ? fmtDur(n.t - w.t) : '';
     }
+    const unit = p.waitUnit();
+    this.el.querySelector('#plan-wait').textContent = fmtWait(Math.min(p.wait, p.maxWait()), unit);
+    this.el.querySelector('#plan-when').innerHTML = this.when(r);
+    this.el.querySelector('#plan-wait-less').disabled = p.wait <= 0;
+    this.el.querySelector('#plan-wait-more').disabled = p.wait >= p.maxWait();
     this.el.querySelector('#plan-pro').textContent = signed(p.pro);
     this.el.querySelector('#plan-rad').textContent = signed(p.rad);
     this.el.querySelector('#plan-dv').textContent = fmtDv(p.dv);
     this.el.querySelector('#plan-approve').disabled = !r || r.empty;
     this.el.querySelector('#plan-result').innerHTML = this.describe(r);
+  }
+
+  /** When the burn happens and where the target is then: "burn in 2 h 5 min · target 25° ahead". */
+  when(r) {
+    const w = this.p.world;
+    if (!r) return '';
+    const dt = r.nodeT - w.t;
+    const parts = [dt > 1 ? `burn in ${fmtDur(dt)}` : 'burn now'];
+    const ph = r.phase;
+    if (ph) {
+      const who = ph.ownBody && w.target.body === w.ship.body ? 'target' : w.target.body.name;
+      const d = Math.round(ph.deg);
+      parts.push(d === 0 ? `${who} lined up` : `${who} <b>${Math.abs(d)}°</b> ${d > 0 ? 'ahead' : 'behind'}`);
+    }
+    return parts.join(' · ');
   }
 
   describe(r) {

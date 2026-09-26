@@ -23,6 +23,7 @@ Add `?all` to the URL to unlock every level while testing.
 | Burn toward target / match target velocity | hold **Toward** / **Match** | T / M |
 | Fine burn | tap briefly | hold Shift |
 | Plan a burn before flying it | **Plan** chip | B |
+| Burn sooner / later (while planning) | hold − / + next to **Wait** | [ / ] |
 | Time warp | ‹ and › around the warp readout | `,` and `.` |
 | Warp to Ap / Pe / closest approach / SOI change | tap the warp readout | — |
 | Zoom | pinch | mouse wheel / trackpad |
@@ -38,7 +39,7 @@ The longer you hold a burn, the faster its Δv rate ramps up. A tap gives about 
 
 ### Planning a burn
 
-Instead of burning live, you can plan a burn and approve it. Tap **Plan** (or press B) and time stops. The burn buttons now shape the plan instead of firing the engine. Prograde and retrograde add or take away along your motion, and radial in and out work the same way. Choose to burn **Now**, **At Ap** or **At Pe**. A green line shows the orbit the burn gives you, with a marker where it happens. The panel lists the new Ap and Pe, any Moon encounter, your closest approach to the target, the burn time and the Δv you'll have left. A plan can never use more fuel than you have.
+Instead of burning live, you can plan a burn and approve it. Tap **Plan** (or press B) and time stops. The burn buttons now shape the plan instead of firing the engine. Prograde and retrograde add or take away along your motion, and radial in and out work the same way. Choose to burn **Now**, **At Ap** or **At Pe**. To burn later, add a **Wait**. It is counted in orbits of your current orbit, so the same buttons work in low orbit, where an orbit takes 90 minutes, and around the Sun, where it takes a year. On a path with no period, such as an escape, it counts hours. Hold − or + to change the wait faster. Below the wait, the panel shows how long until the burn and how far ahead the target will be at that moment. A dashed magenta ring on the map shows where the target will be. Compare the angle with the one the hints give, or keep adjusting the wait until the closest approach is small. A green line shows the orbit the burn gives you, with a marker where it happens. The panel lists the new Ap and Pe, any Moon encounter, your closest approach to the target, the burn time and the Δv you'll have left. A plan can never use more fuel than you have.
 
 **Approve burn** warps to the burn and flies it. The burn is centred on the point you chose, so the orbit you get is the one the preview showed. **Cancel** drops a plan that is waiting, and so does firing the engine yourself. Opening the planner again brings the plan back for editing. Planning isn't available in Flight School, which teaches the buttons one at a time.
 
