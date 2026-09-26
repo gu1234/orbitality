@@ -1,6 +1,7 @@
 // Version line in the main menu: package.json version plus the commit being served.
 // `npm start` serves version.json from git (see server.mjs); GitHub Pages has no build
-// step, so there the hash comes from the latest commit on main via the GitHub API.
+// step, so there the hash is the commit of the latest Pages deployment, from the GitHub
+// API. sw.js makes each load fetch the deployed files, so that is the code running.
 
 const REPO = 'gu1234/orbitality';
 
@@ -16,8 +17,10 @@ async function commit() {
     if (v.commit) return v;
   } catch { /* not served by server.mjs */ }
   if (!location.hostname.endsWith('github.io')) return null;
-  const c = await json(`https://api.github.com/repos/${REPO}/commits/main`);
-  return { commit: c.sha.slice(0, 7), full: c.sha };
+  const api = `https://api.github.com/repos/${REPO}`;
+  const [d] = await json(`${api}/deployments?environment=github-pages&per_page=1`).catch(() => []);
+  const sha = d?.sha || (await json(`${api}/commits/main`)).sha;
+  return { commit: sha.slice(0, 7), full: sha };
 }
 
 /** Fill `el` with "v0.1.0 · abc1234"; the hash links to the commit on GitHub. */

@@ -12,10 +12,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/tutorial.css">
-  <link rel="stylesheet" href="css/planner.css">
-  <link rel="stylesheet" href="css/tooltip.css">
+  <script>
+    // Once sw.js is running, load the game's files through a path unique to this page load
+    // (v/<n>/css/…, v/<n>/js/…). A reload then can't reuse the browser's copies of the last
+    // deploy's modules; sw.js maps the path back to the real file and fetches the current one.
+    window.GAME_BASE = navigator.serviceWorker?.controller ? `v/${Date.now().toString(36)}/` : '';
+    for (const f of ['style', 'tutorial', 'planner', 'tooltip']) {
+      document.write(`<link rel="stylesheet" href="${GAME_BASE}css/${f}.css">`);
+    }
+  </script>
 </head>
 <body>
   <canvas id="view" aria-label="Orbit view"></canvas>
@@ -286,6 +291,14 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js"></script>
+  <script>
+    {
+      const main = document.createElement('script');
+      main.type = 'module';
+      main.src = `${GAME_BASE}js/main.js`;
+      document.body.append(main);
+    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  </script>
 </body>
 </html>
