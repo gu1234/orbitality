@@ -650,6 +650,8 @@ function updateHud(force = false) {
   }
 }
 
+const hasKeyboardPointer = matchMedia('(hover: hover) and (pointer: fine)');
+
 function updateBurnReadout() {
   const w = app.world;
   const el = $('burn-readout');
@@ -658,10 +660,18 @@ function updateBurnReadout() {
   if (w.burn.dir) {
     app.lastBurnDv = w.burn.dv;
     app.lastBurnDir = w.burn.dir;
+    app.lastBurnFine = w.burn.fine;
     app.burnShownUntil = now + 1400;
+    if (w.burn.fine) app.usedFine = true;
   }
   if (now < app.burnShownUntil && app.lastBurnDir) {
-    const txt = `${fmtDv(app.lastBurnDv)}<small>${names[app.lastBurnDir]}</small>`;
+    // keyboard players: point out Shift until they have used it, then just confirm it
+    let fine = '';
+    if (hasKeyboardPointer.matches && app.lastBurnDir !== 'plan') {
+      if (app.lastBurnFine) fine = '<small class="fine-hint on">Fine control</small>';
+      else if (!app.usedFine) fine = '<small class="fine-hint">Hold <kbd>Shift</kbd> for fine control</small>';
+    }
+    const txt = `${fmtDv(app.lastBurnDv)}<small>${names[app.lastBurnDir]}</small>${fine}`;
     if (el.innerHTML !== txt) el.innerHTML = txt;
     el.classList.add('show');
   } else {
@@ -709,6 +719,7 @@ const input = new Input(canvas, {
   tap: (x, y) => { closeWarpMenu(); if (app.mode === 'flying') pick(x, y); },
   doubleTap: () => { if (app.mode === 'flying') frame(); },
   hover: (dir) => { app.hoverDir = dir; },
+  fine: (on) => { if (app.mode === 'flying') app.world?.setFine(on); },
   burnStart: (dir, fine) => {
     if (app.mode !== 'flying') return;
     if (planner.open) {

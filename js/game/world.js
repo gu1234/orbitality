@@ -229,6 +229,14 @@ export class World {
     return true;
   }
 
+  /** Shift pressed or released mid-burn: switch to or from fine control, restarting the ramp. */
+  setFine(on) {
+    const b = this.burn;
+    if (!b.dir || b.plan || b.fine === on) return;
+    b.fine = on;
+    b.hold = 0;
+  }
+
   startBurn(dir, fine = false) {
     if (!this.canBurn(dir)) return false;
     if (this.burn.dir !== dir) {

@@ -1,4 +1,5 @@
-/* Hover tooltips (mouse only), see js/ui/tooltip.js */
+/* Hints for mouse and keyboard players: hover tooltips (js/ui/tooltip.js)
+   and the Shift-for-fine-control line in the burn readout. */
 
 .tooltip {
   position: fixed;
@@ -38,4 +39,22 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tooltip { animation: none; }
+}
+
+/* burn readout: "Hold Shift for fine control" / "Fine control" */
+.burn-readout .fine-hint {
+  margin-top: 4px;
+  font-family: var(--text);
+  font-size: 13px;
+  color: var(--chalk-dim);
+}
+.burn-readout .fine-hint.on { color: var(--ship); font-weight: 600; }
+.burn-readout .fine-hint kbd {
+  padding: 0 4px;
+  border: 1px solid var(--hair-strong);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font-family: var(--display);
+  font-weight: 600;
+  color: var(--chalk);
 }

@@ -134,7 +134,7 @@ export class Input {
 
   bindKeys() {
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Shift') this.shift = true;
+      if (e.key === 'Shift') { this.shift = true; if (!e.repeat) this.h.fine(true); }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (!this.h.keysActive()) {
         if (e.key === 'Escape') this.h.escape();
@@ -165,7 +165,7 @@ export class Input {
       e.preventDefault();
     });
     window.addEventListener('keyup', (e) => {
-      if (e.key === 'Shift') this.shift = false;
+      if (e.key === 'Shift') { this.shift = false; this.h.fine(false); }
       const dir = BURN_KEYS[e.code];
       if (dir && this.keyBurn === dir) {
         this.keyBurn = null;
