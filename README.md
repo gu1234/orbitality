@@ -119,7 +119,18 @@ tests/                      physics tests + a scripted autopilot that proves eve
 assets/planets/             top-down planet images (generated)
 tools/build_planets.py      downloads the source maps and reprojects them (needs Pillow + NumPy)
 server.mjs                  zero-dependency static dev server
+sw.js                       service worker that makes every load run the latest deploy (below)
 ```
+
+### Always the latest deploy
+
+GitHub Pages lets browsers cache each file for 10 minutes. The game is many separate modules, and a reload reuses the ones the tab already has. So without help, a browser can keep running old code after a deploy, or mix old files with new ones. `sw.js` fixes this with no build step:
+
+- Once the worker is running, `index.html` loads the stylesheets and `js/main.js` from a path that is new on every page load (`v/<n>/…`). No cache has seen that path, so nothing old gets reused.
+- The worker maps `v/<n>/` back to the real file and asks the server for it. The request is conditional, so an unchanged file costs a short "not modified" reply.
+- It keeps what comes back, so the game also loads offline.
+
+The first visit has no worker yet and loads the files from their plain paths.
 
 ## Credits
 
