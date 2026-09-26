@@ -217,6 +217,18 @@
 }
 .glossary dd { margin: 0; color: var(--chalk); }
 
+/* Hohmann transfer diagram, animated in the SVG itself (SMIL) */
+.hohmann { margin: 4px 0 14px; text-align: center; }
+.hohmann svg { display: block; width: 100%; max-width: 280px; height: auto; margin: 0 auto; overflow: visible; }
+.hohmann .h-orbit { fill: none; stroke: var(--hair-strong); stroke-width: 1; }
+.hohmann .h-transfer { fill: none; stroke: var(--ship); stroke-width: 1.4; stroke-dasharray: 3 3; }
+.hohmann .h-planet { fill: #6f9fd8; }
+.hohmann .h-burn circle { fill: none; stroke: var(--ship); stroke-width: 1.6; }
+.hohmann .h-burn text { fill: var(--chalk-dim); font-family: var(--display); font-size: 11px; letter-spacing: 0.04em; }
+.hohmann .h-ship { fill: var(--ship); filter: drop-shadow(0 0 3px var(--ship)); }
+.hohmann figcaption { margin-top: 4px; font-size: 13px; color: var(--chalk-dim); }
+.hohmann figcaption b { color: var(--chalk); font-weight: 600; }
+
 /* ---------------------------------------------------------------- small screens */
 
 @media (max-width: 560px) {
@@ -236,6 +248,7 @@
   .coach-goal-text { font-size: 15px; }
   .coach-progress { font-size: 13px; }
   .glossary { grid-template-columns: 1fr; gap: 0; }
+  .hohmann svg { max-width: 220px; }
   .glossary dd { margin-bottom: 8px; }
 }
 

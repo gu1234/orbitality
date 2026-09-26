@@ -375,6 +375,15 @@ function graduate() {
   $('grad-glossary').innerHTML = GLOSSARY.map(([term, def]) => `<dt>${term}</dt><dd>${def}</dd>`).join('');
   coach.hide();
   setMode('grad');
+  // start the Hohmann loop from its first burn; without motion, hold it on the second burn
+  const hohmann = $('grad-hohmann');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    hohmann.pauseAnimations();
+    hohmann.setCurrentTime(0.52 * 9);
+  } else {
+    hohmann.unpauseAnimations();
+    hohmann.setCurrentTime(0);
+  }
   setTimeout(() => $('grad-next').focus({ preventScroll: true }), 50);
 }
 
