@@ -19,7 +19,24 @@
 }
 .planner { padding: 6px 10px 8px; }
 
-.planner-head { display: flex; align-items: center; gap: 8px; }
+.planner-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.planner.dragging { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
+.planner.dragging .planner-head { cursor: grabbing; }
+.planner-grip {
+  width: 8px;
+  height: 14px;
+  margin-right: -2px;
+  opacity: 0.5;
+  background: radial-gradient(circle, var(--chalk-dim) 1px, transparent 1.5px) 0 0 / 4px 4px;
+}
 .planner-head h3 {
   margin: 0;
   font-family: var(--display);

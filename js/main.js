@@ -215,7 +215,8 @@ function freeRect() {
 
 function showBrief() {
   const l = app.level;
-  $('brief-concept').textContent = l.concept;
+  const n = LEVELS.indexOf(l);
+  $('brief-concept').textContent = n >= 0 ? `Level ${n + 1} · ${l.concept}` : l.concept;
   $('brief-title').textContent = l.title;
   $('brief-text').innerHTML = l.brief;
   let budget = '';
