@@ -413,6 +413,28 @@ button:focus-visible, summary:focus-visible {
 .burn.active span { color: var(--field); }
 .burn:disabled { opacity: 0.35; }
 
+/* Fine control toggle: touch players' stand-in for the Shift key, in the pad's bottom-right corner */
+.fine-toggle {
+  display: none;
+  grid-column: 3;
+  grid-row: 3;
+  place-self: center;
+  width: calc(var(--cell) * 0.8);
+  height: calc(var(--cell) * 0.56);
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--hair-strong);
+  font-family: var(--display);
+  font-size: 13px;
+  color: var(--chalk-dim);
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+.fine-toggle[aria-pressed="true"] { background: var(--ship); border-color: var(--ship); color: var(--field); }
+@media (hover: none), (pointer: coarse) {
+  .fine-toggle { display: block; }
+}
+
 .right-controls {
   position: relative;
   display: flex;

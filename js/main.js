@@ -675,11 +675,11 @@ function updateBurnReadout() {
     if (w.burn.fine) app.usedFine = true;
   }
   if (now < app.burnShownUntil && app.lastBurnDir) {
-    // keyboard players: point out Shift until they have used it, then just confirm it
+    // confirm fine control; keyboard players also get pointed at Shift until they have used it
     let fine = '';
-    if (hasKeyboardPointer.matches && app.lastBurnDir !== 'plan') {
+    if (app.lastBurnDir !== 'plan') {
       if (app.lastBurnFine) fine = '<small class="fine-hint on">Fine control</small>';
-      else if (!app.usedFine) fine = '<small class="fine-hint"><kbd>Shift</kbd> key for fine control</small>';
+      else if (!app.usedFine && hasKeyboardPointer.matches) fine = '<small class="fine-hint"><kbd>Shift</kbd> key for fine control</small>';
     }
     const txt = `${fmtDv(app.lastBurnDv)}<small>${names[app.lastBurnDir]}</small>${fine}`;
     if (el.innerHTML !== txt) el.innerHTML = txt;
@@ -775,6 +775,7 @@ const input = new Input(canvas, {
 });
 
 document.querySelectorAll('.burn[data-burn]').forEach((b) => input.bindBurnButton(b));
+input.bindFineToggle($('fine-toggle'));
 
 $('btn-pause').addEventListener('click', () => setMode('paused'));
 $('btn-hint').addEventListener('click', toggleTip);

@@ -19,6 +19,7 @@ export class Input {
     this.burnPointers = new Map(); // pointerId -> burn dir
     this.keyBurn = null;
     this.shift = false;
+    this.fineLatch = false; // on-screen Fine toggle, for players without a Shift key
     this.lastTap = 0;
     this.bindCanvas();
     this.bindKeys();
@@ -95,7 +96,7 @@ export class Input {
       e.preventDefault();
       try { el.setPointerCapture(e.pointerId); } catch { /* ignore */ }
       this.burnPointers.set(e.pointerId, dir);
-      this.h.burnStart(dir, e.shiftKey || this.shift);
+      this.h.burnStart(dir, e.shiftKey || this.fineOn());
     });
     const release = (e) => {
       if (!this.burnPointers.has(e.pointerId)) return;
@@ -109,18 +110,30 @@ export class Input {
     el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.h.hover(null); });
     // keyboard activation of the on-screen buttons
     el.addEventListener('keydown', (e) => {
-      if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); this.h.burnStart(dir, this.shift); }
+      if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); this.h.burnStart(dir, this.fineOn()); }
     });
     el.addEventListener('keyup', (e) => {
       if (e.key === 'Enter' || e.key === ' ') this.h.burnStop();
     });
   }
 
+  /** The on-screen Fine toggle latches fine control, like holding Shift. */
+  bindFineToggle(el) {
+    el.addEventListener('pointerdown', (e) => e.preventDefault()); // keep focus off it
+    el.addEventListener('click', () => {
+      this.fineLatch = !this.fineLatch;
+      el.setAttribute('aria-pressed', String(this.fineLatch));
+      this.h.fine(this.fineOn());
+    });
+  }
+
+  fineOn() { return this.shift || this.fineLatch; }
+
   /** After a release, continue with any other held burn, else stop. */
   syncBurn() {
     const held = [...this.burnPointers.values()];
-    if (held.length) this.h.burnStart(held[held.length - 1], this.shift);
-    else if (this.keyBurn) this.h.burnStart(this.keyBurn, this.shift);
+    if (held.length) this.h.burnStart(held[held.length - 1], this.fineOn());
+    else if (this.keyBurn) this.h.burnStart(this.keyBurn, this.fineOn());
     else this.h.burnStop();
   }
 
@@ -146,7 +159,7 @@ export class Input {
         e.preventDefault();
         if (!e.repeat) {
           this.keyBurn = dir;
-          this.h.burnStart(dir, e.shiftKey);
+          this.h.burnStart(dir, e.shiftKey || this.fineLatch);
         }
         return;
       }
@@ -165,7 +178,7 @@ export class Input {
       e.preventDefault();
     });
     window.addEventListener('keyup', (e) => {
-      if (e.key === 'Shift') { this.shift = false; this.h.fine(false); }
+      if (e.key === 'Shift') { this.shift = false; this.h.fine(this.fineLatch); }
       const dir = BURN_KEYS[e.code];
       if (dir && this.keyBurn === dir) {
         this.keyBurn = null;
