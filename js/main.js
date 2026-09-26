@@ -15,6 +15,7 @@ import { Planner } from './game/planner.js';
 import { PlannerPanel } from './ui/planner-panel.js';
 import { drawPlannerOverlay } from './render/planner-overlay.js';
 import { initTooltips } from './ui/tooltip.js';
+import { showVersion } from './ui/version.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -968,6 +969,7 @@ function loop(now) {
 window.__game = { app, cam, renderer, music, planner, startLevel, startTutorial, nextStep, LEVELS, SANDBOX, TUTORIAL, setMode, finish };
 
 initTooltips();
+showVersion($('menu-version'));
 showMenu();
 if (!progress.any()) showWelcome();
 requestAnimationFrame(loop);

@@ -643,6 +643,7 @@ button:focus-visible, summary:focus-visible {
 .fineprint { margin-top: 22px; font-size: 13px; line-height: 1.5; color: var(--chalk-faint); max-width: 34em; }
 .fineprint.credits { margin-top: 8px; }
 .fineprint a { color: var(--chalk-dim); }
+.fineprint.version { margin-top: 8px; font-variant-numeric: tabular-nums; }
 
 .modal {
   display: grid;

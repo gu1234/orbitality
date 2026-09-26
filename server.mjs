@@ -5,6 +5,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.PORT) || 8080;
@@ -23,10 +24,26 @@ const types = {
   '.webmanifest': 'application/manifest+json',
 };
 
+/** The commit being served, for the version line in the menu (GitHub Pages has no such file). */
+function sendVersion(res) {
+  const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  let v = {};
+  try {
+    v = {
+      commit: git('rev-parse', '--short', 'HEAD'),
+      full: git('rev-parse', 'HEAD'),
+      dirty: git('status', '--porcelain', '--untracked-files=no') !== '',
+    };
+  } catch { /* not a git checkout */ }
+  res.writeHead(200, { 'content-type': types['.json'], 'cache-control': 'no-cache' });
+  res.end(JSON.stringify(v));
+}
+
 createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
     let path = normalize(decodeURIComponent(url.pathname)).replace(/^([/\\])+/, '');
+    if (path === 'version.json') return sendVersion(res);
     if (path.startsWith('..')) throw new Error('bad path');
     let file = join(root, path);
     if ((await stat(file).catch(() => null))?.isDirectory()) file = join(file, 'index.html');
