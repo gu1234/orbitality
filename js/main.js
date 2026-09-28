@@ -18,6 +18,7 @@ import { initTooltips } from './ui/tooltip.js';
 import { TermCard, linkTerms, setLinkedHtml, setLabelTerm } from './ui/terms.js';
 import { termFor } from './game/terms.js';
 import { showVersion } from './ui/version.js';
+import { LaunchCinematic } from './render/launch.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -43,9 +44,11 @@ const planner = new Planner();
 // glossary cards: time stands still while one is open
 const terms = new TermCard({ open: () => input.releaseAllBurns() });
 const plannerPanel = new PlannerPanel(planner, $('flight'), { approve: approvePlan, cancel: cancelPlan, close: togglePlanner, fine: () => input.fineOn() });
+const launch = new LaunchCinematic($('launch'));
+let launchToken = 0;
 
 const app = {
-  mode: 'menu', // menu | brief | flying | paused | result | grad
+  mode: 'menu', // menu | launch | brief | flying | paused | result | grad
   level: null,
   tut: null, // Flight School progress while it runs: { i, ctx, met, snap }
   world: null,
@@ -118,7 +121,7 @@ function renderMenu() {
       <span class="num">${i + 1}</span>
       <span><span class="name">${l.title}</span><span class="concept">${l.concept}${l.fuel ? ' <span class="fuel-tag">with limited fuel</span>' : ''}</span></span>
       <span class="meta">${open ? (st ? starText(st) : '') : '<span class="lock">Locked</span>'}</span>`;
-    b.addEventListener('click', () => startLevel(l));
+    b.addEventListener('click', () => startLevel(l, { launch: true }));
     li.appendChild(b);
     list.appendChild(li);
   });
@@ -131,6 +134,7 @@ function renderMenu() {
 
 function showMenu() {
   endTutorial();
+  launch.stop();
   app.level = DEMO;
   app.world = new World(DEMO);
   app.logSeen = 0;
@@ -148,8 +152,10 @@ function showMenu() {
 
 // ------------------------------------------------------------------ levels
 
-function startLevel(level) {
+/** `launch` plays the rocket launch first on levels that have one (not on Retry or Restart). */
+function startLevel(level, { launch: withLaunch = false } = {}) {
   endTutorial();
+  launch.stop();
   app.level = level;
   app.world = new World(level);
   app.logSeen = 0;
@@ -168,7 +174,15 @@ function startLevel(level) {
   $('target-panel').classList.toggle('hidden', !w.target);
   $('target-actions').classList.toggle('hidden', !w.target);
   renderTip();
-  showBrief();
+  if (withLaunch && level.launch && LaunchCinematic.wanted()) {
+    setMode('launch'); // lays out the HUD under the launch so the orbit view frames correctly
+    const token = ++launchToken;
+    launch.play().then(() => {
+      if (token === launchToken && app.mode === 'launch' && app.level === level) showBrief();
+    });
+  } else {
+    showBrief();
+  }
   updateHud(true);
   frameLevel();
 }
@@ -242,7 +256,7 @@ function showBrief() {
 
 function nextLevel() {
   const i = LEVELS.indexOf(app.level);
-  if (i >= 0 && i + 1 < LEVELS.length) startLevel(LEVELS[i + 1]);
+  if (i >= 0 && i + 1 < LEVELS.length) startLevel(LEVELS[i + 1], { launch: true });
   else showMenu();
 }
 
@@ -300,6 +314,7 @@ const tutStep = () => (app.tut ? TUTORIAL.steps[app.tut.i] : null);
 
 function startTutorial() {
   endTutorial();
+  launch.stop();
   app.level = TUTORIAL;
   app.tut = { i: 0, ctx: null, met: false, snap: null };
   app.fuelWarned = false;
@@ -914,7 +929,7 @@ $('coach-next').addEventListener('click', nextStep);
 $('coach-min').addEventListener('click', () => coach.toggle());
 $('grad-levels').addEventListener('click', showMenu);
 $('grad-replay').addEventListener('click', startTutorial);
-$('grad-next').addEventListener('click', () => startLevel(LEVELS[0]));
+$('grad-next').addEventListener('click', () => startLevel(LEVELS[0], { launch: true }));
 for (const id of ['btn-music', 'menu-music', 'pause-music']) music.bind($(id));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && app.mode === 'flying') setMode('paused');
@@ -1044,7 +1059,7 @@ function loop(now) {
 }
 
 // debug hook for automated testing
-window.__game = { app, cam, renderer, music, planner, terms, startLevel, startTutorial, nextStep, LEVELS, SANDBOX, TUTORIAL, setMode, finish };
+window.__game = { app, cam, renderer, music, planner, terms, launch, startLevel, startTutorial, nextStep, LEVELS, SANDBOX, TUTORIAL, setMode, finish };
 
 initTooltips();
 for (const el of document.querySelectorAll('.tagline, #school-nudge, #welcome p')) linkTerms(el);

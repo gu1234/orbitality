@@ -1,0 +1,11 @@
+/* Launch cinematic canvas: covers the whole game while it plays */
+#launch {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 40;
+  background: var(--field-deep);
+  cursor: pointer;
+  touch-action: none;
+}

@@ -78,6 +78,8 @@ The **Glossary** page (main menu or pause menu) lists every term with its full e
 
 ## Levels
 
+The first three levels open with a short launch: the rocket lifts off, drops its first stage, sheds its fairing and releases your craft in orbit. Tap or press any key to skip it. Retry and Restart go straight to the briefing.
+
 1. **Catch Up**: the target is ahead in the same orbit. Burn retrograde to speed up around Earth.
 2. **Let It Come to You**: the target is behind you. Burn prograde, go higher, and let it catch up.
 3. **Moving Up**: Hohmann transfer to a higher orbit.

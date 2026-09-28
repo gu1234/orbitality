@@ -17,7 +17,7 @@
     // (v/<n>/css/…, v/<n>/js/…). A reload then can't reuse the browser's copies of the last
     // deploy's modules; sw.js maps the path back to the real file and fetches the current one.
     window.GAME_BASE = navigator.serviceWorker?.controller ? `v/${Date.now().toString(36)}/` : '';
-    for (const f of ['style', 'tutorial', 'planner', 'tooltip', 'terms']) {
+    for (const f of ['style', 'tutorial', 'planner', 'tooltip', 'terms', 'launch']) {
       document.write(`<link rel="stylesheet" href="${GAME_BASE}css/${f}.css">`);
     }
   </script>
@@ -294,6 +294,7 @@
     </div>
   </div>
 
+  <canvas id="launch" class="hidden" aria-label="Rocket launch. Tap or press any key to skip."></canvas>
   <script>
     {
       const main = document.createElement('script');

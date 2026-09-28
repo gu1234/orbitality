@@ -4,6 +4,7 @@
 export const LEVELS = [
   {
     id: 'catch-up',
+    launch: true, // open with the rocket launch cinematic
     title: 'Catch Up',
     concept: 'Slow down to speed up',
     brief:
@@ -28,6 +29,7 @@ export const LEVELS = [
   },
   {
     id: 'hold-back',
+    launch: true,
     title: 'Let It Come to You',
     concept: 'Speed up to slow down',
     brief:
@@ -52,6 +54,7 @@ export const LEVELS = [
   },
   {
     id: 'climb',
+    launch: true,
     title: 'Moving Up',
     concept: 'The Hohmann transfer',
     brief:
