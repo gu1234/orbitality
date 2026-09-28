@@ -44,7 +44,7 @@ const planner = new Planner();
 // glossary cards: time stands still while one is open
 const terms = new TermCard({ open: () => input.releaseAllBurns() });
 const plannerPanel = new PlannerPanel(planner, $('flight'), { approve: approvePlan, cancel: cancelPlan, close: togglePlanner, fine: () => input.fineOn() });
-const launch = new LaunchCinematic($('launch'));
+const launch = new LaunchCinematic($('launch'), renderer);
 let launchToken = 0;
 
 const app = {
@@ -177,7 +177,7 @@ function startLevel(level, { launch: withLaunch = false } = {}) {
   if (withLaunch && level.launch && LaunchCinematic.wanted()) {
     setMode('launch'); // lays out the HUD under the launch so the orbit view frames correctly
     const token = ++launchToken;
-    launch.play().then(() => {
+    launch.play({ world: app.world, cam }).then(() => {
       if (token === launchToken && app.mode === 'launch' && app.level === level) showBrief();
     });
   } else {
@@ -1035,7 +1035,7 @@ function loop(now) {
   w.refreshPrediction();
   if (app.frameLock && app.mode !== 'menu' && !app.tut) followFrame(dt);
   cam.update(w, dt);
-  renderer.draw(w, cam, {
+  if (!launch.opaque) renderer.draw(w, cam, { // hidden under the launch until it hands over
     prediction: w.prediction,
     ghost: app.ghost,
     ghostAlpha: app.ghostAlpha,

@@ -1,11 +1,166 @@
-/* Launch cinematic canvas: covers the whole game while it plays */
+/* Launch cinematic: a full-screen canvas with a broadcast-style readout on top */
 #launch {
   position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
   z-index: 40;
   background: var(--field-deep);
   cursor: pointer;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.launch-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.launch-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  --pad: clamp(16px, 3.2vw, 32px);
+}
+.launch-hud.out { opacity: 0; }
+
+/* event title, top left */
+.lh-head {
+  position: absolute;
+  top: calc(var(--pad) + var(--safe-t));
+  left: calc(var(--pad) + var(--safe-l));
+  max-width: 70vw;
+  text-shadow: 0 1px 12px rgba(4, 8, 16, 0.6);
+}
+.lh-clock {
+  font: 600 13px/1 var(--display);
+  letter-spacing: 0.14em;
+  color: var(--ship);
+  font-variant-numeric: tabular-nums;
+}
+.lh-title {
+  margin-top: 8px;
+  font: 600 clamp(26px, 4.4vw, 44px)/1 var(--display);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+.lh-sub {
+  margin-top: 6px;
+  font: 400 clamp(13px, 1.5vw, 15px)/1.3 var(--text);
+  color: rgba(235, 230, 216, 0.8);
+}
+.lh-in { animation: lh-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.lh-sub.lh-in { animation-delay: 0.06s; }
+@keyframes lh-in {
+  from { opacity: 0; transform: translateY(8px); filter: blur(3px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+/* telemetry, top right, in the game's panel style */
+.lh-tel {
+  position: absolute;
+  top: calc(var(--pad) + var(--safe-t));
+  right: calc(var(--pad) + var(--safe-r));
+  padding: 8px 12px;
+  min-width: 150px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.lh-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  line-height: 1.55;
+}
+.lh-label { font: 400 12px var(--text); color: var(--chalk-dim); }
+.lh-value {
+  font: 500 16px var(--display);
+  color: var(--chalk);
+  font-variant-numeric: tabular-nums;
+}
+
+/* mission timeline along the bottom */
+.lh-line {
+  position: absolute;
+  left: calc(var(--pad) + var(--safe-l));
+  right: calc(var(--pad) + var(--safe-r));
+  bottom: calc(var(--pad) + var(--safe-b) + 18px);
+}
+.lh-track {
+  position: relative;
+  height: 2px;
+  background: var(--hair);
+  border-radius: 1px;
+}
+.lh-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--ship);
+  border-radius: 1px;
+  box-shadow: 0 0 8px rgba(255, 181, 71, 0.6);
+}
+.lh-tick {
+  position: absolute;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--field-deep);
+  border: 1.5px solid var(--hair-strong);
+  transition: border-color 0.3s, background 0.3s, transform 0.3s;
+}
+.lh-tick.done { border-color: var(--ship); background: var(--ship); }
+.lh-tick.now { transform: scale(1.35); box-shadow: 0 0 10px rgba(255, 181, 71, 0.8); }
+.lh-tick span {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font: 500 12px var(--display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chalk-faint);
+  transition: color 0.3s;
+}
+.lh-tick.done span { color: var(--chalk-dim); }
+.lh-tick.now span { color: var(--ship); }
+.lh-tick:last-child span { left: auto; right: -4px; transform: none; }
+
+.lh-skip {
+  position: absolute;
+  right: calc(var(--pad) + var(--safe-r));
+  bottom: calc(var(--pad) + var(--safe-b) + 44px);
+  font: 500 12px var(--display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chalk-faint);
+}
+
+@media (hover: hover) {
+  .lh-skip::after { content: ' · any key'; }
+}
+
+@media (max-width: 620px) {
+  .lh-tel { min-width: 0; padding: 6px 10px; }
+  .lh-label { display: none; }
+  .lh-row { justify-content: flex-end; }
+  .lh-value { font-size: 14px; }
+  .lh-head { max-width: 58vw; }
+  .lh-tick:not(.now) span { display: none; }
+  .lh-tick.now span { left: 50%; right: auto; transform: translateX(-50%); }
+  .lh-tick:first-child.now span { left: -4px; transform: none; }
+  .lh-tick:last-child.now span { left: auto; right: -4px; transform: none; }
 }
