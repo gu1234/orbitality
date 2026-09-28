@@ -163,8 +163,6 @@ const upAngle = (v) => Math.atan2(v.x, -v.y);
 // ---------------------------------------------------------------- flight profile
 
 const P = {
-  alt: curve([[EV.liftoff, 0], [1.3, 0.01], [1.65, 0.085], [1.95, 0.6], [2.2, 2.6], [2.4, 6.5], [2.8, 17], [EV.meco, 62], [EV.s2, 88], [EV.fairing, 135], [5.3, 265], [EV.seco, 392], [EV.deploy, 400]]),
-  speed: curve([[EV.liftoff, 0], [1.65, 0.05], [2.2, 0.3], [2.8, 0.9], [EV.meco, 2.2], [EV.s2, 2.15], [EV.fairing, 3.1], [EV.seco, 7.67], [20, 7.67]]),
   pitch: curve([[1.7, 0], [2.4, 5], [2.8, 15], [EV.meco, 36], [EV.fairing, 62], [EV.seco, 83], [EV.deploy, 88], [6.8, 90]]),
   size: curve([[2.0, 1], [EV.meco, 0.82], [5.0, 0.68], [EV.seco, 0.66], [EV.deploy + 0.25, 0.95]]),
   shake: curve([[0.5, 0], [0.62, 2.6], [1.4, 3.2], [2.0, 1.1], [EV.maxq, 2.2], [2.9, 1], [EV.meco, 0.5], [EV.meco + 0.05, 0]]),
@@ -355,6 +353,10 @@ export class LaunchCinematic {
     this.clock = curve([[EV.liftoff, 0], [EV.maxq, 70], [EV.meco, 150], [EV.sep, 153], [EV.s2, 160], [EV.fairing, 210], [EV.seco, 505], [EV.deploy, 520], [EV.handoff, 520 + coast]]);
     this.arc = curve([[1.65, 0], [2.1, 0.0003], [2.4, 0.002], [2.8, 0.018], [EV.meco, 0.2], [EV.fairing, 1.0], [5.3, 4.5], [EV.seco, 12.8], [EV.deploy, ASCENT_ARC], [EV.handoff, arcTotal]]);
     this.orbitV = Math.sqrt(this.earth.gm / this.orbitR);
+    // the climb is shaped for a 400 km orbit; stretch its upper part to the level's own
+    const ka = this.orbitAlt / 400, kv = this.orbitV / 7.67;
+    this.alt = curve([[EV.liftoff, 0], [1.3, 0.01], [1.65, 0.085], [1.95, 0.6], [2.2, 2.6], [2.4, 6.5], [2.8, 17], [EV.meco, 62], [EV.s2, 62 + 26 * Math.sqrt(ka)], [EV.fairing, 135 * ka], [5.3, 265 * ka], [EV.seco, 392 * ka], [EV.deploy, this.orbitAlt]]);
+    this.speed = curve([[EV.liftoff, 0], [1.65, 0.05], [2.2, 0.3], [2.8, 0.9], [EV.meco, 2.2], [EV.s2, 2.15], [EV.fairing, 3.1 * kv], [EV.seco, this.orbitV], [20, this.orbitV]]);
     this.subs = { [EV.deploy]: `${Math.round(this.orbitAlt)} km up at ${this.orbitV.toFixed(1)} km/s` };
     this.t = 0;
     this.parts = [];
@@ -400,7 +402,7 @@ export class LaunchCinematic {
   frame(t) {
     const W = this.W, H = this.H;
     const f = { t };
-    f.h = P.alt(t);
+    f.h = this.alt(t);
     f.theta = this.siteAng + this.dir * this.arc(t) * DEG;
     f.pitch = P.pitch(t) * DEG;
     f.L0 = Math.min(0.5 * H, 0.72 * W);
@@ -908,6 +910,7 @@ export class LaunchCinematic {
     const nz = this.nozzleScreen(f);
     const reach = f.L0 * 0.9;
     const floods = 1 - smooth((f.h - 0.05) / 0.4);
+    const lit = [];
     for (const p of this.parts) {
       const s = this.padPoint(f, p.a, p.b);
       const r = p.r * f.scale;
@@ -917,13 +920,15 @@ export class LaunchCinematic {
       ctx.globalAlpha = a * (p.column ? 0.9 : 0.55 + 0.45 * floods);
       ctx.drawImage(p.kind === 'white' ? this.sprites.white : this.sprites.smoke[p.v ?? 0], s.x - r, s.y - r, 2 * r, 2 * r);
       const warm = glow * Math.exp(-Math.hypot(s.x - nz.x, s.y - nz.y) / (p.column ? reach * 1.6 : reach));
-      if (warm > 0.03) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(1, warm * a * 0.9);
-        ctx.drawImage(this.sprites.warm, s.x - r, s.y - r, 2 * r, 2 * r);
-        ctx.globalCompositeOperation = 'source-over';
-      }
+      if (warm > 0.03) lit.push(s.x - r, s.y - r, 2 * r, Math.min(1, warm * a * 0.9));
     }
+    // engine light on the smoke, in one additive pass
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < lit.length; i += 4) {
+      ctx.globalAlpha = lit[i + 3];
+      ctx.drawImage(this.sprites.warm, lit[i], lit[i + 1], lit[i + 2], lit[i + 2]);
+    }
+    ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }
 
@@ -1388,7 +1393,7 @@ export class LaunchCinematic {
     }
     const alt = t < EV.deploy ? f.h : this.orbitAlt;
     set('alt', this.elAlt, alt < 1 ? `${Math.round(alt * 1000)} m` : `${Math.round(alt)} km`);
-    const v = t < EV.deploy ? P.speed(t) : this.orbitV;
+    const v = t < EV.deploy ? this.speed(t) : this.orbitV;
     set('speed', this.elSpeed, v < 1 ? `${Math.round(v * 1000)} m/s` : `${v.toFixed(2)} km/s`);
     const pct = `${Math.min(100, (t / EV.deploy) * 100).toFixed(1)}%`;
     if (this.shown.pct !== pct) { this.shown.pct = pct; this.elFill.style.width = pct; }
