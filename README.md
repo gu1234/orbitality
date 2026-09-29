@@ -14,6 +14,14 @@ The server also prints a LAN address so you can open the game on your phone over
 
 Add `?all` to the URL to unlock every level while testing.
 
+### Worktrees
+
+```sh
+npm run worktrees  # lists every git worktree on http://localhost:8070
+```
+
+The page lists this repo's worktrees, most recently changed first. A worktree's last change is its newest uncommitted edit or its last commit, whichever is later. **Play** opens that worktree's game at `/wt/<name>/`, and **All levels** opens it with `?all`. An open game reloads by itself when a file in its worktree changes, and the list updates as well. The server uses its own port because a service worker that `npm start` registered at `/` would take over the `/wt/` pages. Every worktree shares one origin, so they also share saved progress. Set `PORT` to use another port.
+
 ## Controls
 
 | Action | Touch | Keyboard |
@@ -131,6 +139,7 @@ js/ui/                      input.js (touch/mouse/keyboard), format.js, coach.js
 tests/                      physics tests + a scripted autopilot that proves every level is solvable
 assets/planets/             top-down planet images (generated)
 tools/build_planets.py      downloads the source maps and reprojects them (needs Pillow + NumPy)
+tools/worktrees.mjs         worktree list and live-reloading game server (tools/worktrees.html)
 server.mjs                  zero-dependency static dev server
 sw.js                       service worker that makes every load run the latest deploy (below)
 ```

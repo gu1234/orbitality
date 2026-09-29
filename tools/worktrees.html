@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbitality worktrees</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1f36'/%3E%3Cellipse cx='16' cy='16' rx='12' ry='7' fill='none' stroke='%23ffb547' stroke-width='2' transform='rotate(-30 16 16)'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%233f7fdc'/%3E%3Ccircle cx='25' cy='10.5' r='2.2' fill='%23ff5fa2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* The game's palette (css/style.css), so this reads as part of the same project. */
+    :root {
+      --field: #0f1f36;
+      --field-deep: #0a172a;
+      --hair: rgba(233, 228, 214, 0.16);
+      --chalk: #ebe6d8;
+      --chalk-dim: rgba(235, 230, 216, 0.62);
+      --chalk-faint: rgba(235, 230, 216, 0.38);
+      --ship: #ffb547;
+      --ship-soft: rgba(255, 181, 71, 0.18);
+      --warn: #ff6a3d;
+      --ok: #9be3b4;
+      --display: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+      --text: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --rail: 28px;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--field);
+      color: var(--chalk);
+      font: 16px/1.45 var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    main {
+      max-width: 60rem;
+      margin: 0 auto;
+      padding: 48px 24px 64px;
+    }
+
+    header { margin: 0 0 40px calc(var(--rail) + 16px); }
+
+    h1 {
+      margin: 0;
+      font: 600 56px/1 var(--display);
+      letter-spacing: 0.01em;
+    }
+
+    .lede {
+      max-width: 38rem;
+      margin: 12px 0 0;
+      color: var(--chalk-dim);
+    }
+
+    .live {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 16px 0 0;
+      font-size: 14px;
+      color: var(--chalk-dim);
+    }
+    .live::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--chalk-faint);
+    }
+    .live[data-state="on"]::before { background: var(--ok); }
+    .live[data-state="off"] { color: var(--warn); }
+    .live[data-state="off"]::before { background: var(--warn); }
+    code { font: 500 0.95em var(--text); color: var(--chalk); }
+
+    /* The list is a timeline: newest change at the top, one dot per worktree on the rail. */
+    ol {
+      position: relative;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    ol::before {
+      content: '';
+      position: absolute;
+      left: calc(var(--rail) / 2 - 1px);
+      top: 22px;
+      bottom: 22px;
+      width: 2px;
+      background: var(--hair);
+    }
+
+    .tree {
+      position: relative;
+      display: grid;
+      grid-template-columns: var(--rail) 8.5rem 1fr auto;
+      column-gap: 16px;
+      align-items: start;
+      padding: 16px 0;
+    }
+    .tree + .tree { border-top: 1px solid var(--hair); }
+
+    .dot {
+      position: relative;
+      justify-self: center;
+      width: 12px;
+      height: 12px;
+      margin-top: 9px;
+      border-radius: 50%;
+      background: var(--field);
+      border: 2px solid var(--chalk-faint);
+    }
+    .tree.edited .dot { border-color: var(--ship); }
+    .tree.recent .dot { background: var(--ship); border-color: var(--ship); }
+    .tree.recent .dot::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 50%;
+      border: 2px solid var(--ship);
+      animation: ping 2.4s ease-out infinite;
+    }
+    .tree.flash .dot::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 50%;
+      border: 2px solid var(--ship);
+      animation: ping 0.9s ease-out 2;
+    }
+    @keyframes ping {
+      from { transform: scale(1); opacity: 0.9; }
+      to { transform: scale(3); opacity: 0; }
+    }
+
+    .when {
+      display: flex;
+      flex-direction: column;
+      padding-top: 3px;
+    }
+    .when time {
+      font: 500 22px/1.1 var(--display);
+      font-variant-numeric: tabular-nums;
+    }
+    .when span { font-size: 14px; color: var(--chalk-faint); }
+    .tree.edited .when span { color: var(--ship); }
+
+    h2 {
+      margin: 0;
+      font: 600 30px/1.1 var(--display);
+      overflow-wrap: anywhere;
+    }
+    .tree:first-child h2 { font-size: 40px; }
+    .tree:first-child .dot { margin-top: 13px; }
+    .tree:first-child .when { padding-top: 7px; }
+    h2 a { color: inherit; text-decoration: none; }
+    h2 a:hover { color: var(--ship); }
+
+    .about p { margin: 4px 0 0; color: var(--chalk-dim); }
+    .about .edits { color: var(--ship); }
+    .about .commit { font-size: 14px; color: var(--chalk-faint); }
+    .about .commit b { font-weight: 500; color: var(--chalk-dim); font-variant-numeric: tabular-nums; }
+    .about .error { color: var(--warn); }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      padding-top: 4px;
+    }
+    .actions a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 0 16px;
+      border-radius: 20px;
+      font: 600 17px/1 var(--display);
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .actions .play { background: var(--ship); color: var(--field-deep); }
+    .actions .play:hover { background: #ffc672; }
+    .actions .all { color: var(--chalk-dim); border: 1px solid var(--hair); }
+    .actions .all:hover { color: var(--chalk); border-color: var(--chalk-faint); }
+
+    a:focus-visible { outline: 2px solid var(--ship); outline-offset: 3px; }
+
+    .notice { margin-left: calc(var(--rail) + 16px); color: var(--chalk-dim); }
+
+    @media (max-width: 720px) {
+      main { padding: 32px 16px 48px; }
+      header { margin-left: 0; }
+      h1 { font-size: 44px; }
+      .tree {
+        grid-template-columns: var(--rail) 1fr;
+        column-gap: 12px;
+      }
+      .dot { grid-row: 1 / span 3; }
+      .when { flex-direction: row; gap: 8px; align-items: baseline; padding-top: 4px; }
+      .tree:first-child .when { padding-top: 4px; }
+      .tree:first-child .dot { margin-top: 9px; }
+      .when time { font-size: 18px; }
+      h2, .tree:first-child h2 { font-size: 30px; }
+      .actions { padding-top: 12px; }
+      .notice { margin-left: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tree.recent .dot::after, .tree.flash .dot::after { animation: none; opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Worktrees</h1>
+      <p class="lede">Every checkout of Orbitality on this machine, most recently changed first. A game opened from here reloads by itself when its files change.</p>
+      <p class="live" id="live">Connecting to the server</p>
+    </header>
+    <ol id="trees" aria-live="polite"></ol>
+    <p class="notice" id="notice" hidden></p>
+  </main>
+
+  <script type="module">
+    const list = document.getElementById('trees');
+    const live = document.getElementById('live');
+    const notice = document.getElementById('notice');
+    /** Changed within this long: the dot keeps pulsing. */
+    const RECENT = 5 * 60_000;
+
+    let trees = [];
+
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+
+    function ago(t) {
+      const s = (Date.now() - t) / 1000;
+      if (s < 45) return 'just now';
+      if (s < 3600) return rtf.format(-Math.round(s / 60), 'minute');
+      if (s < 86400) return rtf.format(-Math.round(s / 3600), 'hour');
+      if (s < 7 * 86400) return rtf.format(-Math.round(s / 86400), 'day');
+      return new Date(t).toLocaleDateString();
+    }
+
+    /** Where the worktree stands relative to the main checkout's branch. */
+    function where(t) {
+      if (t.main) return `The main checkout, on ${t.branch ? `branch ${esc(t.branch)}` : 'a detached HEAD'}`;
+      const redundant = t.branch === t.id || t.branch === `worktree-${t.id}`;
+      const parts = [];
+      if (!t.branch) parts.push('Detached HEAD');
+      else if (!redundant) parts.push(`On branch ${esc(t.branch)}`);
+      const base = esc(t.base || 'main');
+      if (t.ahead && t.behind) parts.push(`${plural(t.ahead, 'commit')} ahead of ${base} and ${t.behind} behind`);
+      else if (t.ahead) parts.push(`${plural(t.ahead, 'commit')} ahead of ${base}`);
+      else if (t.behind) parts.push(`${plural(t.behind, 'commit')} behind ${base}`);
+      else parts.push(`No commits beyond ${base}`);
+      const text = parts.join(', ');
+      return text[0].toUpperCase() + text.slice(1);
+    }
+
+    function row(t, i) {
+      const href = `/wt/${encodeURIComponent(t.id)}/`;
+      const target = `orbitality-${esc(t.id)}`;
+      const name = t.main ? 'main' : t.id;
+      const recent = Date.now() - t.changed < RECENT;
+      const classes = ['tree', t.uncommitted && 'edited', recent && 'recent'].filter(Boolean).join(' ');
+      const details = t.error
+        ? `<p class="error">Couldn't read this worktree: ${esc(t.error)}</p>`
+        : `<p>${where(t)}</p>
+           ${t.uncommitted ? `<p class="edits">${plural(t.uncommitted, 'file')} with uncommitted changes</p>` : ''}
+           <p class="commit"><b>${esc(t.commit.hash)}</b> ${esc(t.commit.subject)}</p>`;
+      return `
+        <li class="${classes}" data-id="${esc(t.id)}">
+          <span class="dot" aria-hidden="true"></span>
+          <div class="when">
+            <time datetime="${new Date(t.changed).toISOString()}" title="${esc(new Date(t.changed).toLocaleString())}">${t.changed ? ago(t.changed) : 'unknown'}</time>
+            <span>${t.error ? '' : t.source}</span>
+          </div>
+          <div class="about">
+            <h2><a href="${href}" target="${target}" title="${esc(t.path)}">${esc(name)}</a></h2>
+            ${details}
+          </div>
+          <div class="actions">
+            <a class="play" href="${href}" target="${target}">Play</a>
+            <a class="all" href="${href}?all" target="${target}" title="Open with every level unlocked">All levels</a>
+          </div>
+        </li>`;
+    }
+
+    function render() {
+      list.innerHTML = trees.map(row).join('');
+    }
+
+    let loading = null;
+    async function load() {
+      if (loading) return loading;
+      loading = (async () => {
+        try {
+          const res = await fetch('/api/worktrees', { cache: 'no-store' });
+          if (!res.ok) throw new Error(`the server answered ${res.status}`);
+          trees = await res.json();
+          notice.hidden = true;
+          render();
+        } catch (err) {
+          notice.hidden = false;
+          notice.textContent = `Couldn't load the worktree list (${err.message}). Start the server with npm run worktrees, then reload this page.`;
+        } finally {
+          loading = null;
+        }
+      })();
+      return loading;
+    }
+
+    function flash(id) {
+      const li = [...list.children].find((el) => el.dataset.id === id);
+      if (!li) return;
+      li.classList.remove('flash');
+      void li.offsetWidth;
+      li.classList.add('flash');
+    }
+
+    const events = new EventSource('/api/events');
+    events.addEventListener('open', () => {
+      live.dataset.state = 'on';
+      live.textContent = 'Watching the worktrees for changes';
+      load();
+    });
+    events.addEventListener('error', () => {
+      live.dataset.state = 'off';
+      live.innerHTML = 'Lost the server. Is <code>npm run worktrees</code> still running?';
+    });
+    events.addEventListener('change', async (e) => {
+      const { id } = JSON.parse(e.data);
+      await load();
+      flash(id);
+    });
+
+    // Commits and new worktrees don't touch the watched files, so check now and then too.
+    setInterval(() => { if (!document.hidden) load(); }, 15_000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+    load();
+  </script>
+</body>
+</html>

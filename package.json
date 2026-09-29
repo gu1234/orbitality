@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
+    "worktrees": "node tools/worktrees.mjs",
     "test": "node --test tests/*.test.mjs"
   }
 }
