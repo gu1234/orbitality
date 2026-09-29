@@ -5,6 +5,7 @@
 // put it back.
 
 import { fmtDist, fmtDv, fmtDur } from './format.js';
+import { Draggable } from './draggable.js';
 
 const AT_NAMES = { now: 'Now', ap: 'At Ap', pe: 'At Pe' };
 const POS_KEY = 'orbitality.plannerPos';
@@ -47,18 +48,6 @@ function fmtWait(s, unit) {
   return `${txt} ${n > 1.0005 ? 'orbits' : 'orbit'}`;
 }
 
-function loadPos() {
-  try {
-    const o = JSON.parse(localStorage.getItem(POS_KEY));
-    if (Number.isFinite(o?.x) && Number.isFinite(o?.y)) return { x: o.x, y: o.y };
-  } catch { /* ignore */ }
-  return { x: 0, y: 0 };
-}
-
-function savePos(off) {
-  try { localStorage.setItem(POS_KEY, JSON.stringify(off)); } catch { /* ignore */ }
-}
-
 function signed(v) {
   if (Math.abs(v) < 0.05) return '0 m/s';
   return `${v > 0 ? '+' : '−'}${fmtDv(Math.abs(v))}`;
@@ -99,55 +88,7 @@ export class PlannerPanel {
     }
     this.armedEl.querySelector('#plan-cancel').addEventListener('click', () => handlers.cancel());
     this.last = '';
-    this.off = loadPos();
-    this.initDrag(q('.planner-head'));
-    addEventListener('resize', () => this.place());
-  }
-
-  /** Drag the panel by its header; the offset is kept within the screen and remembered. */
-  initDrag(head) {
-    let drag = null;
-    head.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0 || e.target.closest('button')) return;
-      e.preventDefault();
-      e.stopPropagation();
-      head.setPointerCapture(e.pointerId);
-      drag = { id: e.pointerId, x: e.clientX - this.off.x, y: e.clientY - this.off.y };
-      this.el.classList.add('dragging');
-    });
-    head.addEventListener('pointermove', (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      this.off = { x: e.clientX - drag.x, y: e.clientY - drag.y };
-      this.place();
-    });
-    const end = (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      drag = null;
-      this.el.classList.remove('dragging');
-      savePos(this.off);
-    };
-    head.addEventListener('pointerup', end);
-    head.addEventListener('pointercancel', end);
-    head.addEventListener('dblclick', (e) => {
-      if (e.target.closest('button')) return;
-      this.off = { x: 0, y: 0 };
-      this.place();
-      savePos(this.off);
-    });
-  }
-
-  /** Apply the drag offset, clamped so the whole panel stays on screen. */
-  place() {
-    const el = this.el;
-    if (el.classList.contains('hidden')) return;
-    el.style.transform = '';
-    const r = el.getBoundingClientRect();
-    const W = document.documentElement.clientWidth;
-    const H = document.documentElement.clientHeight;
-    const x = Math.min(Math.max(this.off.x, -r.left), W - r.right);
-    const y = Math.min(Math.max(this.off.y, -r.top), H - r.bottom);
-    this.off = { x, y };
-    el.style.transform = x || y ? `translate(${x}px, ${y}px)` : '';
+    this.drag = new Draggable(this.el, q('.planner-head'), POS_KEY);
   }
 
   /** Refresh from the planner; cheap when nothing changed. */
@@ -158,7 +99,7 @@ export class PlannerPanel {
     const armed = !p.open && !!p.armed && !!w;
     const wasHidden = this.el.classList.contains('hidden');
     this.el.classList.toggle('hidden', !open);
-    if (open && wasHidden) this.place();
+    if (open && wasHidden) this.drag.place();
     this.armedEl.classList.toggle('hidden', !armed);
     if (armed) {
       const a = p.armed;

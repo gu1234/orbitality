@@ -13,6 +13,7 @@ import { drawTutorialOverlay } from './render/tutorial-overlay.js';
 import { Coach } from './ui/coach.js';
 import { Planner } from './game/planner.js';
 import { PlannerPanel } from './ui/planner-panel.js';
+import { Draggable } from './ui/draggable.js';
 import { drawPlannerOverlay } from './render/planner-overlay.js';
 import { initTooltips } from './ui/tooltip.js';
 import { TermCard, linkTerms, setLinkedHtml, setLabelTerm } from './ui/terms.js';
@@ -291,15 +292,30 @@ function finish() {
 
 // ------------------------------------------------------------------ tips
 
+// the hint strip is its own window: drag it anywhere, double-tap to put it back
+const tipDrag = new Draggable($('tip'), $('tip'), 'orbitality.tipPos');
+tipDrag.onMove = stackOverTip;
+addEventListener('resize', stackOverTip);
+
 function renderTip() {
   const hints = app.level?.hints || [];
   const tip = $('tip');
   tip.classList.toggle('hidden', app.tipHidden || !hints.length);
-  if (!hints.length) return;
-  app.tipIndex = (app.tipIndex + hints.length) % hints.length;
-  setLinkedHtml($('tip-text'), hints[app.tipIndex]);
-  $('tip-pager').classList.toggle('hidden', hints.length < 2);
-  $('tip-count').textContent = `${app.tipIndex + 1}/${hints.length}`;
+  if (hints.length) {
+    app.tipIndex = (app.tipIndex + hints.length) % hints.length;
+    setLinkedHtml($('tip-text'), hints[app.tipIndex]);
+    $('tip-pager').classList.toggle('hidden', hints.length < 2);
+    $('tip-count').textContent = `${app.tipIndex + 1}/${hints.length}`;
+  }
+  tipDrag.place();
+  stackOverTip();
+}
+
+/** While the hint sits in its own spot, the planner opens just above it instead of on top of it. */
+function stackOverTip() {
+  const tip = $('tip');
+  const h = tipDrag.home && !tip.classList.contains('hidden') ? tip.offsetHeight + 8 : 0;
+  $('flight').style.setProperty('--tip-stack', `${h}px`);
 }
 
 function toggleTip() {
@@ -1016,6 +1032,7 @@ function togglePlanner() {
   if (planner.armed) cancelPlan();
   input.releaseAllBurns();
   closeMenus();
+  stackOverTip();
   if (planner.show()) planner.tick(0);
 }
 

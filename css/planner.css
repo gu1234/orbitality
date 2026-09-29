@@ -1,5 +1,6 @@
-/* Burn planner: the Plan button, the planning panel (above the controls, where
-   the hint strip sits) and the one-line countdown once a plan is approved. */
+/* Burn planner: the Plan button, the planning panel (above the controls, and
+   above the hint strip while that sits in its own spot) and the one-line
+   countdown once a plan is approved. */
 
 /* Plan sits in the burn pad's bottom-left corner, mirroring Fine on the right */
 .plan-btn {
@@ -39,7 +40,7 @@
   position: absolute;
   left: var(--edge-l);
   right: var(--edge-r);
-  bottom: calc(var(--edge-b) + var(--pad-h) + 10px);
+  bottom: calc(var(--edge-b) + var(--pad-h) + 10px + var(--tip-stack, 0px));
   max-width: 400px;
   background: var(--panel);
   border: 1px solid var(--hair);
@@ -169,14 +170,12 @@
 #flight.planning .pad .burn:active svg { stroke: var(--field); }
 #flight.planning .target-actions,
 #flight.planning .warp { opacity: 0.35; pointer-events: none; }
-#flight.planning .tip,
-#flight.plan-armed .tip { display: none; }
 
 @media (max-height: 520px) and (orientation: landscape) {
   .planner, .planner-armed {
     left: calc(var(--edge-l) + var(--cell) * 3 + 20px);
     right: calc(var(--edge-r) + var(--right-w) + 10px);
-    bottom: var(--edge-b);
+    bottom: calc(var(--edge-b) + var(--tip-stack, 0px));
     margin: 0 auto;
   }
   .planner { padding: 4px 8px 6px; }

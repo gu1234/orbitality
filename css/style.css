@@ -259,10 +259,25 @@ button:focus-visible, summary:focus-visible {
   border: 1px solid var(--hair);
   border-left: 2px solid var(--ship);
   border-radius: 3px;
-  padding: 4px 2px 4px 10px;
+  padding: 4px 2px 4px 6px;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
+.tip.dragging { cursor: grabbing; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
+.tip-grip {
+  flex: none;
+  order: -2;
+  width: 8px;
+  height: 14px;
+  margin-right: 4px;
+  opacity: 0.5;
+  background: radial-gradient(circle, var(--chalk-dim) 1px, transparent 1.5px) 0 0 / 4px 4px;
+}
+.tip .term { cursor: pointer; }
 .tip p {
   flex: 1;
   margin: 0;
