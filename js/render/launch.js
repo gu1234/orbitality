@@ -11,7 +11,7 @@
 // and the orbit view (thousands of km). The vehicle itself is drawn as an icon
 // whose size is set separately, as the game does with its ship marker.
 
-import { clamp01, smooth, ease, lerp, mixc, rgba, wrap, rng, curve, wobble, makeCanvas, softEllipse, upAngle } from './launch-util.js';
+import { clamp01, smooth, ease, lerp, mixc, rgba, wrap, rng, curve, wobble, makeCanvas, softEllipse, upAngle, volumeSprites } from './launch-util.js';
 import { Smoke } from './launch-smoke.js';
 import { PadScene } from './launch-pad.js';
 
@@ -74,42 +74,8 @@ function puffSprite(col, seed = 1, lumps = 7) {
   return c;
 }
 
-/**
- * A flat-bottomed cumulus built from shaded lumps: `pal` gives the lit, middle
- * and shadowed colours, and `light` where the light comes from (top for the
- * dusk sky, bottom for the engines as the rocket passes).
- */
-function cloudSprite(seed, pal, light) {
-  const W = 512, H = 212, c = makeCanvas(W, H), x = c.getContext('2d');
-  const r = rng(seed);
-  const lumps = [];
-  for (let i = 0; i < 70; i++) {
-    const cx = W * (0.1 + r() * 0.8);
-    const edge = 1 - Math.abs(cx / W - 0.5) * 2;
-    const rad = H * (0.06 + r() * 0.12) * (0.5 + edge * 0.7);
-    const cy = H * 0.74 - rad * (0.15 + r() * 0.7) * (0.4 + edge);
-    lumps.push({ x: cx, y: cy, r: rad });
-  }
-  lumps.sort((p, q) => (q.y * light.y) - (p.y * light.y));
-  for (const l of lumps) {
-    const g = x.createRadialGradient(l.x + light.x * l.r * 0.4, l.y + light.y * l.r * 0.5, l.r * 0.05, l.x, l.y, l.r);
-    g.addColorStop(0, rgba(pal.hi, 0.95));
-    g.addColorStop(0.55, rgba(pal.mid, 0.85));
-    g.addColorStop(1, rgba(pal.lo, 0));
-    x.fillStyle = g;
-    x.beginPath(); x.arc(l.x, l.y, l.r, 0, TWO_PI); x.fill();
-  }
-  // a flat, darker base where the cloud sits on its condensation level
-  x.globalCompositeOperation = 'source-atop';
-  const b = x.createLinearGradient(0, H * 0.55, 0, H * 0.78);
-  b.addColorStop(0, rgba(pal.lo, 0));
-  b.addColorStop(1, rgba(pal.lo, light.y < 0 ? 0.55 : 0));
-  x.fillStyle = b;
-  x.fillRect(0, 0, W, H);
-  x.globalCompositeOperation = 'destination-out';
-  x.fillRect(0, H * 0.8, W, H * 0.2);
-  return c;
-}
+/** A cumulus: a billowing dome over a flat base, as a soft noise volume. */
+const cumulus = (u, v) => (1 - smooth((Math.hypot(u, (v - 0.25) / 0.85) - 0.35) / 0.6)) * (1 - smooth((v - 0.45) / 0.25));
 
 // ---------------------------------------------------------------- flight profile
 
@@ -329,9 +295,18 @@ export class LaunchCinematic {
   makeSprites() {
     this.sprites = {
       white: puffSprite([240, 244, 250], 7, 1),
-      clouds: [0, 1, 2].map((i) => cloudSprite(31 + i * 7, { hi: [232, 176, 178], mid: [112, 114, 156], lo: [56, 64, 98] }, { x: 0.3, y: -0.5 })),
-      cloudsWarm: [0, 1, 2].map((i) => cloudSprite(31 + i * 7, { hi: [255, 214, 160], mid: [226, 138, 88], lo: [120, 70, 60] }, { x: 0, y: 0.6 })),
+      clouds: [],
+      cloudsWarm: [],
     };
+    // the clouds we climb through: lit pink from the sunset above, and orange by the engines from below
+    for (let i = 0; i < 3; i++) {
+      const [dusk, warm] = volumeSprites({
+        w: 320, h: 132, seed: 31 + i * 7, shape: cumulus, detail: [4.2, 1.8], warp: 0.3,
+        looks: [{ hi: [236, 182, 180], lo: [50, 58, 92], light: { x: 0.4, y: -1 }, ambient: 0.2 }, { hi: [255, 214, 160], lo: [110, 62, 50], light: { x: 0, y: 1 }, ambient: 0.15 }],
+      });
+      this.sprites.clouds.push(dusk);
+      this.sprites.cloudsWarm.push(warm);
+    }
     const r = rng(5);
     this.clouds = [];
     for (let i = 0; i < 14; i++) this.clouds.push({ a: -2.5 + r() * 6, b: 2.2 + r() * 2.2, w: 0.8 + r() * 1.6, k: i % 3, front: r() < 0.3 });

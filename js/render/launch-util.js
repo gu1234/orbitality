@@ -67,3 +67,91 @@ export function softEllipse(ctx, x, y, w, l, stops) {
 
 /** Rotation that turns a canvas's -y axis to point along screen vector v. */
 export const upAngle = (v) => Math.atan2(v.x, -v.y);
+
+// ---------------------------------------------------------------- noise and soft volumes
+
+/** Smooth value noise on a hashed lattice, in [0, 1]. */
+export function valueNoise(seed) {
+  const r = rng(seed);
+  const perm = new Uint8Array(512), vals = new Float32Array(256);
+  for (let i = 0; i < 256; i++) { perm[i] = i; vals[i] = r(); }
+  for (let i = 255; i > 0; i--) { const j = (r() * (i + 1)) | 0; const t = perm[i]; perm[i] = perm[j]; perm[j] = t; }
+  for (let i = 0; i < 256; i++) perm[256 + i] = perm[i];
+  return (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const X = xi & 255, Y = yi & 255;
+    const a = vals[perm[X + perm[Y]]], b = vals[perm[X + 1 + perm[Y]]];
+    const c = vals[perm[X + perm[Y + 1]]], d = vals[perm[X + 1 + perm[Y + 1]]];
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+}
+
+/** Octaves of noise summed, in about [0, 1]. `billow` folds each octave for puffy, rolling detail. */
+export function fbm(noise, x, y, octaves = 5, billow = false) {
+  let sum = 0, amp = 0.5, norm = 0, f = 1;
+  for (let i = 0; i < octaves; i++) {
+    let n = noise(x * f + i * 17.3, y * f + i * 31.7);
+    if (billow) n = Math.abs(n * 2 - 1);
+    sum += n * amp;
+    norm += amp;
+    amp *= 0.5;
+    f *= 2.03;
+  }
+  return sum / norm;
+}
+
+/**
+ * Soft, noisy volumes (smoke, vapour, cloud), rendered once from a density field
+ * and lit several ways. `shape(u, v)` gives the base density for u, v in -1..1;
+ * noise warps its outline and breaks it into rolling detail. Each look is
+ * { hi, lo, light: { x, y }, ambient }: light shines from `light` (screen
+ * directions, y down) and is absorbed by the density it passes through, so the
+ * far side of a puff falls into its own shadow. Returns one canvas per look,
+ * all sharing the same silhouette so they can be blended over each other.
+ */
+export function volumeSprites({ w, h, seed, shape, looks, detail = [3, 3], warp = 0.35, billow = true, absorb = 0.55 }) {
+  const noise = valueNoise(seed);
+  const dens = new Float32Array(w * h);
+  for (let j = 0; j < h; j++) {
+    const v = ((j + 0.5) / h) * 2 - 1;
+    for (let i = 0; i < w; i++) {
+      const u = ((i + 0.5) / w) * 2 - 1;
+      const wu = u + warp * (fbm(noise, u * 1.7 + 5.2, v * 1.7 + 1.3, 3) - 0.5) * 2;
+      const wv = v + warp * (fbm(noise, u * 1.7 + 9.7, v * 1.7 + 4.1, 3) - 0.5) * 2;
+      const body = shape(wu, wv);
+      if (body <= 0) continue;
+      const n = fbm(noise, u * detail[0] + 2.1, v * detail[1] + 7.9, 5, billow);
+      const d = body * (0.25 + 1.5 * n) - 0.1;
+      dens[j * w + i] = d <= 0 ? 0 : d >= 1 ? 1 : d;
+    }
+  }
+  const step = Math.max(w, h) / 30;
+  return looks.map((look) => {
+    const c = makeCanvas(w, h), x = c.getContext('2d');
+    const img = x.createImageData(w, h), px = img.data;
+    const ll = Math.hypot(look.light.x, look.light.y) || 1;
+    const lx = (look.light.x / ll) * step, ly = (look.light.y / ll) * step;
+    for (let j = 0; j < h; j++) {
+      for (let i = 0; i < w; i++) {
+        const k = j * w + i, d = dens[k];
+        if (d <= 0.002) continue;
+        // march toward the light, adding up the smoke in the way
+        let sum = 0;
+        for (let s = 1; s <= 7; s++) {
+          const si = Math.round(i + lx * s), sj = Math.round(j + ly * s);
+          if (si < 0 || sj < 0 || si >= w || sj >= h) break;
+          sum += dens[sj * w + si];
+        }
+        const lit = look.ambient + (1 - look.ambient) * Math.exp(-sum * absorb);
+        const o = k * 4;
+        px[o] = look.lo[0] + (look.hi[0] - look.lo[0]) * lit;
+        px[o + 1] = look.lo[1] + (look.hi[1] - look.lo[1]) * lit;
+        px[o + 2] = look.lo[2] + (look.hi[2] - look.lo[2]) * lit;
+        px[o + 3] = 255 * Math.pow(d, 0.8);
+      }
+    }
+    x.putImageData(img, 0, 0);
+    return c;
+  });
+}

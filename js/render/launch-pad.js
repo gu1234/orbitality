@@ -12,7 +12,7 @@
 // the top of the launch table where the rocket stands. The layout is designed
 // with the tower on the left and mirrored so the rocket flies away from it.
 
-import { TWO_PI, smooth, lerp, mixc, rgba, rng, makeCanvas, softEllipse } from './launch-util.js';
+import { TWO_PI, smooth, lerp, mixc, rgba, rng, makeCanvas, softEllipse, valueNoise, fbm } from './launch-util.js';
 
 const GROUND = 12; // terrain, below the table top
 const DECK = 4; // top of the raised pad
@@ -35,6 +35,32 @@ function glowSprite() {
   return c;
 }
 
+/**
+ * A floodlight beam: a cone of light in hazy air, bright near the lamp and
+ * fading with distance, with soft (gaussian) edges and a little texture from
+ * the haze it passes through. Long along x, the lamp at x = 0.
+ */
+function beamSprite() {
+  const W = 256, H = 96, c = makeCanvas(W, H), x = c.getContext('2d');
+  const img = x.createImageData(W, H), px = img.data;
+  const noise = valueNoise(61);
+  for (let i = 0; i < W; i++) {
+    const along = i / W;
+    const hw = 1.5 + i * 0.085; // half-width grows with distance
+    const fall = Math.pow(1 - along, 1.4) * Math.min(1, i / 6);
+    for (let j = 0; j < H; j++) {
+      const dy = (j + 0.5 - H / 2) / hw;
+      const a = fall * Math.exp(-dy * dy * 1.6) * (0.72 + 0.28 * fbm(noise, i / 34, j / 14, 3));
+      if (a < 0.004) continue;
+      const o = (j * W + i) * 4;
+      px[o] = 210; px[o + 1] = 224; px[o + 2] = 255;
+      px[o + 3] = 255 * a;
+    }
+  }
+  x.putImageData(img, 0, 0);
+  return c;
+}
+
 /** Same sprite in a colour, since canvas can't tint an image on the fly. */
 function tinted(img, col) {
   const c = makeCanvas(img.width, img.height), x = c.getContext('2d');
@@ -51,6 +77,7 @@ export class PadScene {
     this.ev = ev;
     const g = glowSprite();
     this.glow = { white: tinted(g, [225, 235, 255]), amber: tinted(g, [255, 186, 110]), red: tinted(g, [255, 70, 55]), warm: tinted(g, ENGINE) };
+    this.beam = beamSprite();
     const r = rng(41);
     this.stars = Array.from({ length: 44 }, () => ({ x: r() * 2 - 1, y: 0.18 + r() * 0.82, b: 0.35 + r() * 0.65, tw: r() * 6 }));
     this.streaks = Array.from({ length: 8 }, () => ({ x: r() * 1.5 - 0.75, y: 0.06 + r() * 0.3, len: 0.2 + r() * 0.4, th: 0.006 + r() * 0.014, a: 0.35 + r() * 0.3, s: r() * 10 }));
@@ -323,7 +350,7 @@ export class PadScene {
       ctx.globalAlpha = fade * 0.8;
       ctx.drawImage(this.glow.amber, x - 2.2, GROUND + 5.2 - 2.2, 4.4, 4.4);
     }
-    for (const x of [-168, -108, 108, 168]) {
+    for (const x of [-168, -118, 124, 168]) {
       ctx.globalAlpha = fade * 0.5;
       ctx.drawImage(this.glow.white, x - 30, GROUND - 4, 60, 12);
     }
@@ -335,60 +362,162 @@ export class PadScene {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = fade;
     // propellant storage spheres and a water tower
-    this.sphere(ctx, -152, GROUND - 10, 9, px, [226, 228, 232]);
-    this.sphere(ctx, -178, GROUND - 8, 7, px, [214, 218, 226]);
+    const fine = k > 2.2;
+    this.tank(ctx, -152, 9, px, [226, 228, 232], fine);
+    this.tank(ctx, -178, 7, px, [214, 218, 226], fine);
     ctx.strokeStyle = 'rgba(150,165,195,0.35)';
     ctx.lineWidth = Math.max(px, 0.5);
     ctx.beginPath(); ctx.moveTo(-143, GROUND - 2); ctx.lineTo(-40, GROUND - 2); ctx.stroke();
-    this.waterTower(ctx, 132, px, t);
+    this.waterTower(ctx, 98, px, t, fine, eg);
     // flood towers with their lamp banks aimed at the rocket
-    for (const x of [-168, -108, 108, 168]) this.floodTower(ctx, x, px, fade);
+    for (const x of [-168, -118, 124, 168]) this.floodTower(ctx, x, px, fade);
     ctx.restore();
     ctx.restore();
   }
 
-  sphere(ctx, x, y, r, px, col) {
-    for (const lx of [-0.6, 0.6]) {
-      ctx.strokeStyle = 'rgba(20,28,44,0.9)';
-      ctx.lineWidth = Math.max(px, 0.6);
-      ctx.beginPath(); ctx.moveTo(x + lx * r, y + r * 0.5); ctx.lineTo(x + lx * r * 1.1, GROUND); ctx.stroke();
-    }
-    const g = ctx.createRadialGradient(x + r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
-    g.addColorStop(0, rgba(mixc(col, [255, 255, 255], 0.3)));
-    g.addColorStop(0.5, rgba(mixc(col, [70, 80, 110], 0.55)));
-    g.addColorStop(1, rgba([22, 30, 48]));
+  /** A shaded sphere, lit from the pad's floodlights (on its left) and dark on the far side. */
+  sphere(ctx, x, y, r, col, rx = r, ry = r) {
+    const g = ctx.createRadialGradient(x - rx * 0.4, y - ry * 0.45, rx * 0.08, x, y, Math.max(rx, ry) * 1.02);
+    g.addColorStop(0, rgba(mixc(col, [255, 255, 255], 0.35)));
+    g.addColorStop(0.45, rgba(mixc(col, [80, 90, 120], 0.45)));
+    g.addColorStop(1, rgba([18, 26, 44]));
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, TWO_PI); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, TWO_PI); ctx.fill();
+    // a thin rim of light where the floodlights catch the edge
+    ctx.strokeStyle = 'rgba(200,215,245,0.35)';
+    ctx.lineWidth = Math.max(0.2, rx * 0.03);
+    ctx.beginPath(); ctx.ellipse(x, y, rx * 0.985, ry * 0.985, 0, Math.PI * 0.75, Math.PI * 1.35); ctx.stroke();
   }
 
-  waterTower(ctx, x, px, t) {
-    ctx.strokeStyle = '#0d1628';
-    ctx.lineWidth = Math.max(px, 0.7);
+  /** A propellant storage sphere on short braced legs, with a catwalk round its middle. */
+  tank(ctx, x, r, px, col, fine) {
+    const y = GROUND - r * 1.05;
+    ctx.strokeStyle = '#0f1829';
+    ctx.lineWidth = Math.max(1.1 * px, r * 0.06);
     ctx.beginPath();
-    for (const lx of [-5, -1.7, 1.7, 5]) { ctx.moveTo(x + lx * 0.8, -52); ctx.lineTo(x + lx, GROUND); }
-    for (const y of [-30, -8]) { ctx.moveTo(x - 4.6, y); ctx.lineTo(x + 4.6, y); }
+    for (const k of [-0.85, -0.3, 0.3, 0.85]) { ctx.moveTo(x + k * r, y + r * 0.35); ctx.lineTo(x + k * r * 1.08, GROUND); }
+    if (fine) for (const [a, b] of [[-0.85, -0.3], [0.3, 0.85]]) { ctx.moveTo(x + a * r, y + r * 0.45); ctx.lineTo(x + b * r * 1.08, GROUND); ctx.moveTo(x + b * r, y + r * 0.45); ctx.lineTo(x + a * r * 1.08, GROUND); }
     ctx.stroke();
-    this.sphere(ctx, x, -58, 7.5, px, [190, 198, 214]);
-    if (Math.sin(t * 4.2 + 1) > 0) this.lamp(ctx, 'red', x, -66, 2.2, 1);
+    this.sphere(ctx, x, y, r, col);
+    this.catwalk(ctx, x, y, r * 1.06, px, fine);
+  }
+
+  /** A railed walkway round a tank's equator, seen side-on. */
+  catwalk(ctx, x, y, half, px, fine) {
+    ctx.fillStyle = '#1a2439';
+    ctx.fillRect(x - half, y - 0.2, half * 2, 0.45);
+    if (!fine) return;
+    ctx.strokeStyle = 'rgba(150,165,200,0.55)';
+    ctx.lineWidth = Math.max(0.6 * px, 0.08);
+    ctx.beginPath();
+    ctx.moveTo(x - half, y - 1.1); ctx.lineTo(x + half, y - 1.1);
+    for (let k = -half; k <= half + 0.01; k += 1.3) { ctx.moveTo(x + k, y - 0.2); ctx.lineTo(x + k, y - 1.1); }
+    ctx.stroke();
+  }
+
+  /** A water tower: a spheroid tank on four splayed legs, cross-braced, with a riser pipe, ladder and catwalk. */
+  waterTower(ctx, x, px, t, fine, eg) {
+    const cy = -60, rx = 9.5, ry = 7.6, top = cy + ry * 0.55;
+    const legs = [[-7.2, -11.5, 1], [-2.6, -4.2, 0.6], [2.6, 4.2, 0.6], [7.2, 11.5, 1]]; // [x at tank, x at ground, how near]
+    const at = (l, y) => x + lerp(l[0], l[1], (y - top) / (GROUND - top));
+    const levels = [-40, -20, 0];
+    // legs behind first, then the bracing, then the front legs
+    ctx.lineCap = 'round';
+    for (const pass of [0, 1]) {
+      for (const l of legs) {
+        if ((l[2] === 1) !== (pass === 1)) continue;
+        ctx.strokeStyle = pass ? '#16213a' : '#0e1627';
+        ctx.lineWidth = Math.max(1.2 * px, pass ? 0.75 : 0.5);
+        ctx.beginPath(); ctx.moveTo(at(l, top), top); ctx.lineTo(at(l, GROUND), GROUND); ctx.stroke();
+        if (pass) {
+          ctx.strokeStyle = 'rgba(170,188,225,0.35)'; // floodlit edge
+          ctx.lineWidth = Math.max(0.5 * px, 0.12);
+          ctx.beginPath(); ctx.moveTo(at(l, top) - 0.3, top); ctx.lineTo(at(l, GROUND) - 0.3, GROUND); ctx.stroke();
+        }
+      }
+      if (pass === 0) {
+        // horizontal struts and diagonal tension rods between the front legs
+        ctx.strokeStyle = '#131d33';
+        ctx.lineWidth = Math.max(0.9 * px, 0.35);
+        ctx.beginPath();
+        const ys = [top, ...levels, GROUND];
+        for (const y of levels) { ctx.moveTo(at(legs[0], y), y); ctx.lineTo(at(legs[3], y), y); }
+        ctx.stroke();
+        if (fine) {
+          ctx.strokeStyle = 'rgba(40,52,78,0.9)';
+          ctx.lineWidth = Math.max(0.6 * px, 0.1);
+          ctx.beginPath();
+          for (let i = 0; i < ys.length - 1; i++) {
+            const y0 = ys[i], y1 = ys[i + 1];
+            for (const [a, b] of [[0, 1], [1, 2], [2, 3]]) {
+              ctx.moveTo(at(legs[a], y0), y0); ctx.lineTo(at(legs[b], y1), y1);
+              ctx.moveTo(at(legs[b], y0), y0); ctx.lineTo(at(legs[a], y1), y1);
+            }
+          }
+          ctx.stroke();
+        }
+        // the riser pipe down the middle
+        const g = ctx.createLinearGradient(x - 1, 0, x + 1, 0);
+        g.addColorStop(0, '#5d6a86');
+        g.addColorStop(1, '#1b2640');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - 0.9, top, 1.8, GROUND - top);
+      }
+    }
+    // a ladder up the nearest leg to the catwalk
+    if (fine) {
+      ctx.strokeStyle = 'rgba(120,135,170,0.6)';
+      ctx.lineWidth = Math.max(0.5 * px, 0.08);
+      ctx.beginPath();
+      for (const off of [0.9, 1.6]) { ctx.moveTo(at(legs[0], top) + off, top); ctx.lineTo(at(legs[0], GROUND) + off, GROUND); }
+      for (let y = top + 1; y < GROUND; y += 1.4) { ctx.moveTo(at(legs[0], y) + 0.9, y); ctx.lineTo(at(legs[0], y) + 1.6, y); }
+      ctx.stroke();
+    }
+    // the tank itself, its roof and vent, the catwalk and a painted band
+    this.sphere(ctx, x, cy, 0, [200, 208, 222], rx, ry);
+    ctx.strokeStyle = 'rgba(20,30,50,0.35)';
+    ctx.lineWidth = Math.max(0.6 * px, 0.15);
+    ctx.beginPath(); ctx.ellipse(x, cy, rx, ry * 0.18, 0, 0, Math.PI); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,181,71,0.75)';
+    ctx.beginPath(); ctx.ellipse(x - 1.4, cy - 1.8, 3.4, 1.4, -0.35, 0, TWO_PI); ctx.lineWidth = Math.max(0.6 * px, 0.35); ctx.strokeStyle = 'rgba(255,181,71,0.7)'; ctx.stroke();
+    ctx.fillStyle = 'rgba(40,70,130,0.8)';
+    ctx.beginPath(); ctx.arc(x - 1.4, cy - 1.8, 0.8, 0, TWO_PI); ctx.fill();
+    this.catwalk(ctx, x, cy + ry * 0.55, rx * 0.84, px, fine);
+    ctx.fillStyle = '#1a2640';
+    ctx.beginPath(); ctx.moveTo(x - 1.6, cy - ry + 0.3); ctx.lineTo(x, cy - ry - 1.6); ctx.lineTo(x + 1.6, cy - ry + 0.3); ctx.closePath(); ctx.fill();
+    ctx.fillRect(x - 0.15, cy - ry - 3.6, 0.3, 2.2);
+    if (eg > 0.01) {
+      // the engines' glow on the side facing the pad
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha *= eg * 0.35;
+      ctx.drawImage(this.glow.warm, x - rx * 2, cy - ry * 1.5, rx * 2.4, ry * 3);
+      ctx.restore();
+    }
+    if (Math.sin(t * 4.2 + 1) > 0) this.lamp(ctx, 'red', x, cy - ry - 3.8, Math.max(1.4, 5 * px), 1);
+    this.lamp(ctx, 'amber', x + rx * 0.84, cy + ry * 0.55 - 1.3, Math.max(1, 4 * px), 0.8);
   }
 
   floodTower(ctx, x, px, fade) {
+    // a lattice pole with a lamp bank on a platform
     ctx.strokeStyle = '#0c1526';
-    ctx.lineWidth = Math.max(1.2 * px, 0.6);
-    ctx.beginPath(); ctx.moveTo(x, GROUND); ctx.lineTo(x, -22); ctx.stroke();
+    ctx.lineWidth = Math.max(1.1 * px, 0.35);
+    ctx.beginPath();
+    ctx.moveTo(x - 0.8, GROUND); ctx.lineTo(x - 0.4, -22);
+    ctx.moveTo(x + 0.8, GROUND); ctx.lineTo(x + 0.4, -22);
+    for (let y = GROUND; y > -20; y -= 4) { ctx.moveTo(x - lerp(0.8, 0.4, (GROUND - y) / 34), y); ctx.lineTo(x + lerp(0.8, 0.4, (GROUND - y + 4) / 34), y - 4); }
+    ctx.stroke();
     ctx.fillStyle = '#16213a';
-    ctx.fillRect(x - 3, -25, 6, 3);
-    // beams raking up at the rocket
+    ctx.fillRect(x - 3.2, -25.2, 6.4, 3.2);
+    ctx.fillRect(x - 3.6, -22.2, 7.2, 0.5);
+    // soft cones of light raking up at the rocket, through the haze
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.translate(x, -23.5);
-    ctx.rotate(Math.atan2(-36 + 23.5, -x * 0.98));
-    const len = Math.abs(x) * 1.25;
-    const bg = ctx.createLinearGradient(0, 0, len, 0);
-    bg.addColorStop(0, `rgba(205,220,255,${0.085 * fade})`);
-    bg.addColorStop(1, 'rgba(205,220,255,0)');
-    ctx.fillStyle = bg;
-    ctx.beginPath(); ctx.moveTo(0, -1.2); ctx.lineTo(len, -13); ctx.lineTo(len, 13); ctx.lineTo(0, 1.2); ctx.fill();
+    ctx.translate(x, -23.6);
+    ctx.rotate(Math.atan2(-50 + 23.6, -x * 0.98)); // aimed up at the upper stage
+    const len = Math.hypot(x, 26) * 1.3;
+    ctx.globalAlpha *= 0.36 * fade;
+    ctx.drawImage(this.beam, 0, -len * (48 / 256), len, len * (96 / 256));
     ctx.restore();
     for (let i = 0; i < 4; i++) this.lamp(ctx, 'white', x - 2.2 + i * 1.45, -24.2, 2.6, 0.9);
   }
