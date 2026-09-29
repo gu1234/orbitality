@@ -25,6 +25,7 @@ test('terms are found in running text', () => {
   assert.deepEqual(ids('when the target is about 25° ahead of you'), ['phase-angle']);
   assert.deepEqual(ids('the Moon is roughly 110–120° ahead'), ['phase-angle']);
   assert.deepEqual(ids('Match'), ['relative-velocity'], 'the Match button');
+  assert.deepEqual(findTerms('Warp to').map((m) => m.end), [7], 'the Warp to button, linked whole');
   assert.deepEqual(ids('Match your Ap to the target\'s Ap'), ['apoapsis'], 'but not match as a verb');
   assert.deepEqual(ids('Apollo lands'), [], 'whole words only');
   assert.deepEqual(ids('That is an orbit. Your orbit rises.'), ['orbit'], 'orbit as a noun phrase only');

@@ -528,6 +528,10 @@ button:focus-visible, summary:focus-visible {
 }
 .warp-value small {
   display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 400;
   color: var(--chalk-dim);

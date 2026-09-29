@@ -752,7 +752,7 @@ function updateHud(force = false) {
   let html;
   if (planner.open) html = 'Paused<small>planning</small>';
   else if (w.burn.dir) html = `${fmtWarp(w.burn.warp)}<small>burning</small>`;
-  else if (w.warpTarget) html = `${fmtWarp(w.effectiveWarp || w.warp)}<small>to ${w.warpTarget.label.toLowerCase()}</small>`;
+  else if (w.warpTarget) html = `${fmtWarp(w.effectiveWarp || w.warp)}<small>${warpToStatus(w.warpTarget.label)}</small>`;
   else if (w.effectiveWarp !== undefined && w.effectiveWarp < w.warp) html = `${fmtWarp(w.effectiveWarp)}<small>limited</small>`;
   else html = fmtWarp(w.warp) + warpPips(w);
   if (app.warpHtml !== html) { wv.innerHTML = html; app.warpHtml = html; }
@@ -765,6 +765,14 @@ function updateHud(force = false) {
     b.classList.toggle('active', w.burn.dir === b.dataset.burn);
     if (!b.classList.contains('tgt')) b.disabled = w.status !== 'flying' || (!s.unlimited && s.fuel <= 0);
   }
+}
+
+/** The warp readout's status line during a warp-to, short enough for the strip. */
+function warpToStatus(label) {
+  if (label === 'Closest approach') return 'to closest';
+  if (label.startsWith('Closest to ')) return `near ${label.slice(11)}`;
+  const s = label.replace(/ SOI$/, '');
+  return `to ${s[0].toLowerCase()}${s.slice(1)}`;
 }
 
 /** The warp level meter: a pip per step up to the current one; steps above the cap near the target fade out. */

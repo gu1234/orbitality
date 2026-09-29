@@ -185,6 +185,7 @@
 .coach-hl svg { stroke: var(--ship); }
 .row.coach-hl { outline-offset: 1px; border-radius: 2px; animation-name: coach-hl-row; }
 .pad-center.coach-hl { border-radius: 50%; }
+.warp-to.coach-hl { border-radius: 20px; }
 .pad-center.coach-hl svg { opacity: 1; }
 @keyframes coach-hl {
   0% { box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.85), 0 0 14px 2px rgba(255, 181, 71, 0.5); }

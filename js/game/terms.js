@@ -170,7 +170,7 @@ export const TERMS = [
   {
     id: 'warp',
     name: 'Time warp',
-    match: [/\btime warp\b/i, /\bwarp\b/i],
+    match: [/\btime warp\b/i, /^Warp to$/, /\bwarp\b/i],
     short: 'Speeding up the clock so long coasts take seconds.',
     body: [
       'Orbits are slow. A lap of Earth takes 90 minutes and the trip to the Moon five days. Time warp runs the clock faster so you can skip the waiting. It does not change your orbit at all, only how fast time passes.',
