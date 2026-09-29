@@ -28,6 +28,10 @@ function mulberry32(seed) {
   };
 }
 
+// muted so the belts stay in the background: rock and ice, both close to the sky's blue-grey
+const DUST = [178, 176, 168];
+const ICE = [150, 170, 196];
+
 // Kirkwood gaps: resonances with Jupiter (4:1 3:1 5:2 7:3 2:1) that Jupiter has swept clear (AU, half width)
 const KIRKWOOD = [[2.065, 0.02], [2.502, 0.025], [2.825, 0.012], [2.958, 0.01], [3.279, 0.03]];
 
@@ -100,7 +104,7 @@ function build(sys) {
   const groups = [];
 
   // main belt: 2.1–3.3 AU, densest near 2.7, with the Kirkwood gaps
-  const main = new Group('Asteroid belt', [214, 200, 176], 0.5, 2.75 * AU);
+  const main = new Group('Asteroid belt', DUST, 0.24, 2.75 * AU);
   while (main.count < 2600) {
     const a = 2.06 + 1.24 * rnd();
     if (rnd() > Math.pow(Math.sin((Math.PI * (a - 2.06)) / 1.24), 0.7)) continue;
@@ -112,7 +116,7 @@ function build(sys) {
 
   // Hildas: 3:2 with Jupiter. The resonant angle 3λJ − 2λ − ϖ stays near 0, so their
   // aphelia fall 60°, 180° and 300° from Jupiter: a slowly turning triangle.
-  const hildas = new Group('Hildas', [214, 200, 176], 0.5, 4.45 * AU);
+  const hildas = new Group('Hildas', DUST, 0.2, 4.45 * AU);
   const aH = J.a * Math.pow(2 / 3, 2 / 3);
   for (let i = 0; i < 350; i++) {
     const lam = TWO_PI * rnd();
@@ -123,15 +127,15 @@ function build(sys) {
   groups.push(hildas);
 
   // Jupiter's Trojans, 60° ahead (L4, the bigger swarm) and behind (L5)
-  const trojans = new Group('Trojans', [214, 200, 176], 0.5, J.a);
-  for (let i = 0; i < 900; i++) {
-    const off = (i < 520 ? 60 : -60) * DEG + 9 * DEG * gauss();
+  const trojans = new Group('Trojans', DUST, 0.2, J.a);
+  for (let i = 0; i < 600; i++) {
+    const off = (i < 350 ? 60 : -60) * DEG + 9 * DEG * gauss();
     trojans.addTrojan(J.a * (1 + 0.035 * gauss()), off, 18 * DEG * rnd(), TWO_PI * rnd());
   }
   groups.push(trojans);
 
   // Kuiper belt: the classical belt out to the 2:1 edge at 47.7 AU...
-  const kuiper = new Group('Kuiper belt', [176, 200, 228], 0.45, 44 * AU);
+  const kuiper = new Group('Kuiper belt', ICE, 0.26, 44 * AU);
   for (let i = 0; i < 1300; i++) {
     const a = 42 + 5.7 * rnd();
     const e = rnd() < 0.7 ? 0.08 * rnd() : 0.08 + 0.14 * rnd();
@@ -178,7 +182,7 @@ export class Belts {
     const lamJ = world.sys.byId.jupiter.angle(t);
     const halfDiag = Math.hypot(w, h) / 2 / s;
     const dc = Math.hypot(cam.cx, cam.cy); // screen centre's distance from the Sun (km)
-    const size = Math.max(1, 1.4 * dpr) / dpr; // CSS px: at least one device pixel
+    const size = 1; // CSS px: a speck, never more
     const ox = w / 2 - cam.cx * s, oy = h / 2 + cam.cy * s; // the Sun on screen
     for (const g of this.groups(world.sys)) {
       if (g.rOut * s < 14) continue; // lost in the Sun's glare

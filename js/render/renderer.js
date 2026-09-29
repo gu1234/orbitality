@@ -220,7 +220,7 @@ export class Renderer {
     // --- asteroid and Kuiper belts
     this.labels.length = 0;
     const beltLabels = this.belts.draw(ctx, world, cam, w, h, this.dpr);
-    if (!this.minimal) for (const l of beltLabels) this.labels.push({ ...l, prio: 4, alpha: 0.55 });
+    if (!this.minimal) for (const l of beltLabels) this.labels.push({ ...l, prio: 4, alpha: 0.38 });
 
     // --- body orbits and SOIs
     ctx.lineWidth = 1;
