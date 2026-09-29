@@ -4,8 +4,8 @@
 // clouds and city lights, atmospheric rims, and Saturn's rings with the
 // planet's shadow across them.
 //
-// Textures: Solar System Scope (solarsystemscope.com), CC BY 4.0,
-// reprojected by tools/build_planets.py.
+// Textures: Solar System Scope (solarsystemscope.com), CC BY 4.0, and public-domain
+// spacecraft maps for the moons and small bodies, reprojected by tools/build_planets.py.
 
 const BASE = new URL('../../assets/planets/', import.meta.url).href;
 const TWO_PI = Math.PI * 2;
@@ -30,6 +30,39 @@ const ART = {
   },
   uranus: { tex: 'uranus.jpg', rot: -62064, atmo: [185, 238, 245, 0.45, 0.025] },
   neptune: { tex: 'neptune.jpg', rot: 57996, atmo: [120, 160, 255, 0.45, 0.025] },
+
+  // moons: all tidally locked. shape: the width seen from above as a fraction of the
+  // length, for bodies too small to pull themselves round (long axis toward the parent)
+  phobos: { tex: 'phobos.jpg', tidal: true, shape: 0.84 },
+  deimos: { tex: 'deimos.jpg', tidal: true, shape: 0.77 },
+  io: { tex: 'io.jpg', tidal: true },
+  europa: { tex: 'europa.jpg', tidal: true },
+  ganymede: { tex: 'ganymede.jpg', tidal: true },
+  callisto: { tex: 'callisto.jpg', tidal: true },
+  mimas: { tex: 'mimas.jpg', tidal: true },
+  enceladus: { tex: 'enceladus.jpg', tidal: true },
+  tethys: { tex: 'tethys.jpg', tidal: true },
+  dione: { tex: 'dione.jpg', tidal: true },
+  rhea: { tex: 'rhea.jpg', tidal: true },
+  titan: { tex: 'titan.jpg', tidal: true, atmo: [232, 184, 103, 0.7, 0.06] },
+  iapetus: { tex: 'iapetus.jpg', tidal: true },
+  miranda: { tex: 'miranda.jpg', tidal: true },
+  ariel: { tex: 'ariel.jpg', tidal: true },
+  umbriel: { tex: 'umbriel.jpg', tidal: true },
+  titania: { tex: 'titania.jpg', tidal: true },
+  oberon: { tex: 'oberon.jpg', tidal: true },
+  triton: { tex: 'triton.jpg', tidal: true, atmo: [200, 215, 235, 0.15, 0.015] },
+  charon: { tex: 'charon.jpg', tidal: true },
+
+  // dwarf planets and asteroids
+  ceres: { tex: 'ceres.jpg', rot: 9.074 * 3600 },
+  vesta: { tex: 'vesta.jpg', rot: 5.342 * 3600 },
+  pallas: { tex: 'pallas.jpg', rot: 7.813 * 3600, shape: 0.94 },
+  hygiea: { tex: 'hygiea.jpg', rot: 13.83 * 3600 },
+  pluto: { tex: 'pluto.jpg', rot: -6.387 * DAY, lockedTo: 'charon', atmo: [170, 200, 255, 0.2, 0.012] }, // Pluto and Charon face each other
+  haumea: { tex: 'haumea.jpg', rot: 3.915 * 3600, shape: 0.73 },
+  makemake: { tex: 'makemake.jpg', rot: 22.83 * 3600 },
+  eris: { tex: 'eris.jpg', rot: 15.786 * DAY },
 };
 
 const NIGHT = [2, 5, 12];
@@ -46,7 +79,7 @@ function discPath(ctx, x, y, r, view) {
     ctx.arc(x, y, r, 0, TWO_PI);
     return;
   }
-  const th = Math.atan2(view.h / 2 - y, view.w / 2 - x);
+  const th = Math.atan2(view.cy - y, view.cx - x);
   const half = Math.min(Math.PI, (2 * Math.hypot(view.w, view.h)) / r);
   ctx.moveTo(x, y);
   for (let i = 0; i <= 64; i++) {
@@ -57,6 +90,13 @@ function discPath(ctx, x, y, r, view) {
 }
 
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+/** (x, y) scaled by (a, b) along the axes turned by the spin in `st`, in canvas rotation terms. */
+function stretch(st, x, y, a, b) {
+  const { c, s } = st;
+  const u = a * (c * x - s * y), w = b * (s * x + c * y);
+  return [c * u + s * w, -s * u + c * w];
+}
 
 const TWILIGHT = 0.32; // how far past the terminator (in radii) light still reaches
 
@@ -141,6 +181,11 @@ export class PlanetArt {
   /** Rotation of the body's surface (radians, counter-clockwise) at time t. */
   spin(body, def, t) {
     if (def.tidal) return body.angle(t) + Math.PI; // same face toward the parent
+    if (def.lockedTo) {
+      // same face toward its moon
+      const m = body.children.find((c) => c.id === def.lockedTo);
+      if (m) return m.angle(t);
+    }
     return (def.phase || 0) + (TWO_PI * t) / def.rot;
   }
 
@@ -151,17 +196,52 @@ export class PlanetArt {
   draw(ctx, body, x, y, r, t, dpr) {
     const a = this.load(body.id);
     if (!a || !a.base.ready) return false;
+    const spin = this.spin(body, a.def, t);
+    if (!a.def.shape) return this.paint(ctx, a, body, x, y, r, t, dpr, spin, null);
+    // an elongated body: stretch the whole drawing along its long axis (the texture's
+    // x axis, which turns with it), keeping its area
+    const k = a.def.shape;
+    const st = { c: Math.cos(spin), s: Math.sin(spin), a: 1 / Math.sqrt(k), b: Math.sqrt(k) };
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-spin);
+    ctx.scale(st.a, st.b);
+    ctx.rotate(spin);
+    ctx.translate(-x, -y);
+    this.paint(ctx, a, body, x, y, r * st.a, t, dpr, spin, st, r);
+    ctx.restore();
+    return true;
+  }
+
+  /**
+   * The lit disc. With `st` it is drawn in draw()'s stretched frame, so screen-space
+   * directions are mapped into that frame first; r is then the long radius (for picking
+   * texture detail) and r0 the radius drawn.
+   */
+  paint(ctx, a, body, x, y, r, t, dpr, spin, st, r0 = r) {
     const def = a.def;
+    const px = 2 * r * dpr;
+    r = r0;
     // direction to the Sun in screen space (the Sun sits at the origin)
     const p = body.absPos(t);
     const L = Math.hypot(p.x, p.y);
-    const sx = L ? -p.x / L : 1, sy = L ? p.y / L : 0;
+    let sx = L ? -p.x / L : 1, sy = L ? p.y / L : 0;
+    const view = { w: ctx.canvas.width / dpr, h: ctx.canvas.height / dpr };
+    view.cx = view.w / 2;
+    view.cy = view.h / 2;
+    if (st) {
+      // a gradient along d in the stretched frame runs along M·d on screen (M is symmetric),
+      // so pointing it along M·d keeps the terminator square to the Sun
+      [sx, sy] = stretch(st, sx, sy, st.a, st.b);
+      const n = Math.hypot(sx, sy);
+      sx /= n; sy /= n;
+      const [cx, cy] = stretch(st, view.cx - x, view.cy - y, 1 / st.a, 1 / st.b);
+      view.cx = x + cx;
+      view.cy = y + cy;
+    }
 
     if (a.rings && a.rings.ready) this.rings(ctx, a, x, y, r, body, sx, sy, dpr);
 
-    const view = { w: ctx.canvas.width / dpr, h: ctx.canvas.height / dpr };
-    const px = 2 * r * dpr;
-    const spin = this.spin(body, def, t);
     ctx.save();
     ctx.beginPath();
     discPath(ctx, x, y, r, view);

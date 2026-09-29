@@ -168,7 +168,11 @@ The first visit has no worker yet and loads the files from their plain paths.
 
 ## Credits
 
-Planet textures: [Solar System Scope](https://www.solarsystemscope.com/textures/), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). They are reprojected from equirectangular maps to a north-polar orthographic view by `tools/build_planets.py`. To rebuild them:
+Planet textures: [Solar System Scope](https://www.solarsystemscope.com/textures/), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). They are reprojected from equirectangular maps to a north-polar orthographic view by `tools/build_planets.py`.
+
+Moon, dwarf planet and asteroid textures: public-domain maps by NASA/JPL, USGS, DLR and the Galileo, Voyager, Cassini, Dawn and New Horizons teams, via [Wikimedia Commons](https://commons.wikimedia.org/) (Solar System Scope's artist's impressions for Haumea, Makemake and Eris; generated craters for Pallas, Hygiea and Deimos, which were never mapped). Uranus's moons, Triton and Vesta are shown from the south, the hemisphere their spacecraft mapped. Phobos, Deimos, Pallas and Haumea are drawn elongated, and Pluto keeps the same face toward Charon.
+
+To rebuild them:
 
 ```sh
 python3 tools/build_planets.py
