@@ -231,6 +231,9 @@ createServer(async (req, res) => {
     if (!res.headersSent) notFound(res);
     else res.end();
   }
+}).on('error', (err) => {
+  console.error(err.code === 'EADDRINUSE' ? `Port ${port} is already in use. Pick another with PORT=<n>.` : err.message);
+  process.exit(1);
 }).listen(port, async () => {
   await refresh().catch((err) => console.error(`Can't list worktrees: ${err.message}`));
   console.log(`Orbitality worktrees at http://localhost:${port}`);

@@ -17,7 +17,9 @@ Add `?all` to the URL to unlock every level while testing.
 ### Worktrees
 
 ```sh
-npm run worktrees  # lists every git worktree on http://localhost:8070
+npm run worktrees        # lists every git worktree on http://localhost:8070
+npm run worktrees:start  # the same, in the background (log in tools/.cache/worktrees.log)
+npm run worktrees:stop   # stops the background server
 ```
 
 The page lists this repo's worktrees, most recently changed first. A worktree's last change is its newest uncommitted edit or its last commit, whichever is later. **Play** opens that worktree's game at `/wt/<name>/`, and **All levels** opens it with `?all`. An open game reloads by itself when a file in its worktree changes, and the list updates as well. The server uses its own port because a service worker that `npm start` registered at `/` would take over the `/wt/` pages. Every worktree shares one origin, so they also share saved progress. Set `PORT` to use another port.
