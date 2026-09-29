@@ -124,16 +124,23 @@ export class PadScene {
     // T-0: the umbilicals pull away in a gush of vapour
     if (!pre && !this.burst) {
       this.burst = true;
-      for (let i = 0; i < 34; i++) {
+      for (let i = 0; i < 64; i++) {
         const r = this.rand;
-        this.put('vapor', -ROCKET_R - r() * 2, ARM_Y + r() * 4, -4 - r() * 12, -2 + r() * 6, { r: 0.8 + r() * 0.9, gr: 3.2, life: 2 + r() * 1.2, a: 0.34 });
+        const out = r() < 0.75 ? -1 : 1; // mostly blown back toward the tower
+        this.put('vapor', -ROCKET_R - r() * 1.5, ARM_Y + r() * 4, out * (3 + r() * 13), -3 + r() * 9, { r: 1 + r() * 1.3, gr: 4.2, life: 2.4 + r() * 1.3, a: 0.4, front: r() < 0.5 });
       }
       for (const s of [-1, 1]) {
-        for (let i = 0; i < 16; i++) {
+        for (let i = 0; i < 30; i++) {
           const r = this.rand;
-          this.put('vapor', s * (ROCKET_R + r() * 2), -5 + r() * 2, s * (3 + r() * 9), -1 + r() * 4, { r: 0.7 + r() * 0.7, gr: 2.8, life: 1.8 + r(), a: 0.32 });
+          this.put('vapor', s * (ROCKET_R + r() * 2.5), -4 - r() * 3, s * (3 + r() * 11), -2 + r() * 5, { r: 0.9 + r() * 1, gr: 3.8, life: 2 + r(), a: 0.42, front: true });
         }
       }
+    }
+    // the released plate keeps shedding vapour as the arm swings away
+    const rel = this.release(0.9);
+    if (!pre && rel < 0.95) {
+      const tipX = TOWER.x1 + (-ROCKET_R - TOWER.x1) * (1 - 0.78 * rel), tipY = ARM_Y - 2.5 * rel;
+      this.every(55 * (1 - rel), dt, (r) => this.put('vapor', tipX - 0.4, tipY + r() * 3, -2 - r() * 5, 1 + r() * 4, { r: 0.6 + r() * 0.6, gr: 3, life: 1.8 + r(), a: 0.3, front: r() < 0.5 }));
     }
     const firing = t > ev.ignite && t < ev.liftoff + 2.2;
     if (!firing) return;
@@ -180,6 +187,7 @@ export class PadScene {
     const at = (x, y) => ({ x: o.x + right.x * x + up.x * y, y: o.y + right.y * x + up.y * y });
     const el = f.sunEl * 57.3;
     const dusk = Math.max(0, 1 - Math.abs(el + 3) / 10);
+    const dark = smooth((2 - el) / 8); // 0 in daylight, 1 once the Sun is well down
     ctx.save();
     // the Earth's shadow rising opposite the sunset, with the pink Belt of Venus above it
     if (dusk > 0.02) {
@@ -211,7 +219,7 @@ export class PadScene {
       const p = at(s.x * W * 0.55, s.y * H * 0.85);
       if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;
       const near = Math.max(0, 1 - Math.abs(s.x - side * 0.8) * 1.1);
-      const a = s.b * (0.2 + 0.8 * s.y) * (1 - near * 0.85) * vis * (0.75 + 0.25 * Math.sin(now * 3 + s.tw * 7));
+      const a = s.b * (0.2 + 0.8 * s.y) * (1 - near * 0.85) * vis * dark * (0.75 + 0.25 * Math.sin(now * 3 + s.tw * 7));
       if (a < 0.05) continue;
       ctx.fillStyle = rgba([235, 232, 222], a);
       const z = s.b > 0.85 ? 1.6 : 1.1;
@@ -255,7 +263,7 @@ export class PadScene {
       const s = cin.dirToScreen(d, f.psi);
       const right = { x: -f.up.y, y: f.up.x };
       const a = Math.atan2(s.x * right.x + s.y * right.y, s.x * f.up.x + s.y * f.up.y);
-      return at(Math.sin(a) * W * 0.44, Math.cos(a) * H * 0.78);
+      return at(Math.sin(a) * W * 0.44, Math.min(0.6, Math.cos(a) * 0.78) * H);
     };
     const U = f.U, md = cin.moonDir;
     const el = Math.asin(Math.max(-1, Math.min(1, U.x * md.x + U.y * md.y)));
@@ -269,7 +277,7 @@ export class PadScene {
     ctx.rotate(Math.atan2(s.y - p.y, s.x - p.x));
     ctx.globalAlpha = vis;
     // earthshine on the dark part, then the sunlit crescent and a soft glow
-    ctx.fillStyle = 'rgba(70,80,108,0.55)';
+    ctx.fillStyle = `rgba(70,80,108,${0.55 * smooth((2 - f.sunEl * 57.3) / 8)})`;
     ctx.beginPath(); ctx.arc(0, 0, R, 0, TWO_PI); ctx.fill();
     ctx.fillStyle = '#f4ecdc';
     ctx.beginPath();
