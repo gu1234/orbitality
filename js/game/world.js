@@ -174,6 +174,8 @@ export class World {
   setWarpIndex(i) {
     this.warpIndex = Math.max(0, Math.min(WARPS.length - 1, i));
     this.warpTarget = null;
+    // the old rate is stale until the next step; left in place, a raised warp would read as "limited"
+    this.effectiveWarp = undefined;
   }
 
   // ---- burns ---------------------------------------------------------------
