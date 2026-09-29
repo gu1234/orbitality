@@ -174,7 +174,7 @@ export const TERMS = [
     short: 'Speeding up the clock so long coasts take seconds.',
     body: [
       'Orbits are slow. A lap of Earth takes 90 minutes and the trip to the Moon five days. Time warp runs the clock faster so you can skip the waiting. It does not change your orbit at all, only how fast time passes.',
-      'Tap the warp readout to jump straight to your next apoapsis, periapsis or closest approach. Warp slows down by itself during burns and near the target.',
+      '<b>Warp to</b> jumps straight to your next apoapsis, periapsis or closest approach. Warp slows down by itself during burns and near the target.',
     ],
     anim: 'warp',
     related: ['period', 'closest'],

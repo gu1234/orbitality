@@ -95,13 +95,6 @@
       </div>
     </section>
 
-    <div class="view-tools">
-      <button class="chip plan-chip" id="btn-plan" aria-label="Plan a burn" data-tip="Plan a burn ahead of time, then let the autopilot fly it" data-key="B" aria-pressed="false">Plan</button>
-      <button class="chip" id="btn-focus" aria-label="Change camera focus" data-tip="Change what the camera is centred on" data-key="F">Earth</button>
-      <button class="chip" id="btn-frame" aria-label="Frame ship and target" data-tip="Zoom to fit your ship and the target (or double-click the map)" data-key="Z">Frame</button>
-      <button class="chip lock-chip" id="btn-lock" aria-label="Lock the frame" data-tip="Lock the frame: the camera keeps following your ship and the target. Pan or zoom to unlock" data-key="L" aria-pressed="false">Lock</button>
-    </div>
-
     <div class="burn-readout" id="burn-readout"></div>
     <div class="toast" id="toast"></div>
 
@@ -126,24 +119,56 @@
           <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="7"/><path d="M15 15l10 10M25 15L15 25M20 27v9M9 13l-5-4M31 13l5-4"/></svg>
           <span>Retrograde</span>
         </button>
+        <!-- Plan: a planned path, dashed like the preview orbit, from where the burn happens -->
+        <button class="plan-btn" id="btn-plan" aria-label="Plan a burn" data-tip="Plan a burn ahead of time, then let the autopilot fly it" data-key="B" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="node" cx="5.5" cy="18" r="2.4"/><path class="dash" d="M7.8 15.6C9.5 10.5 13 7.4 18 6.6"/><path d="M15.2 4.2l3.6 2.3-2.4 3.4"/></svg>
+        </button>
         <button class="fine-toggle" id="fine-toggle" aria-pressed="false" aria-label="Fine control: burn slowly for small adjustments">Fine</button>
       </div>
 
       <div class="right-controls">
-        <div class="target-actions" id="target-actions">
-          <button class="burn tgt" data-burn="toward" aria-label="Burn toward target" data-tip="Push straight toward the target" data-key="T"><span>Toward</span></button>
-          <button class="burn tgt" data-burn="match" aria-label="Match target velocity" data-tip="Match the target&#x27;s velocity so you stop drifting apart" data-key="M"><span>Match</span></button>
+        <!-- Camera: what it is centred on, fit ship + target once, or keep following them -->
+        <div class="view-tools" role="group" aria-label="Camera">
+          <button class="cam-btn cam-focus" id="btn-focus" aria-label="Centre the camera on" aria-haspopup="menu" aria-expanded="false" data-tip="Choose what the camera is centred on" data-key="F">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M12 2.5v4.2M12 17.3v4.2M2.5 12h4.2M17.3 12h4.2"/><circle class="fill" cx="12" cy="12" r="1.7"/></svg>
+            <span class="cam-label"><span id="focus-name">Earth</span><svg class="caret" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 6.5l3-3 3 3"/></svg></span>
+          </button>
+          <button class="cam-btn" id="btn-frame" aria-label="Fit ship and target in view" data-tip="Fit: zoom to show your ship and the target (or double-click the map)" data-key="Z">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8.5v-5h5M15.5 3.5h5v5M20.5 15.5v5h-5M8.5 20.5h-5v-5"/><circle class="you" cx="8.8" cy="15" r="2.1"/><path class="them" d="M15 6.6l2.6 2.6-2.6 2.6-2.6-2.6z"/></svg>
+            <span class="cam-label">Fit</span>
+          </button>
+          <button class="cam-btn" id="btn-lock" aria-label="Follow ship and target" data-tip="Follow: the camera keeps your ship and the target in view as they move. Pan or zoom to stop" data-key="L" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8.5v-5h5M15.5 3.5h5v5M20.5 15.5v5h-5M8.5 20.5h-5v-5"/><rect x="8" y="11.2" width="8" height="6.3" rx="1.2"/><path d="M9.9 11.2V9.6a2.1 2.1 0 0 1 4.2 0v1.6"/></svg>
+            <span class="cam-label">Follow</span>
+          </button>
         </div>
-        <div class="warp">
+        <div class="pop-menu focus-menu hidden" id="focus-menu" role="menu" aria-label="Centre the camera on"></div>
+
+        <div class="target-actions" id="target-actions" role="group" aria-label="Target burns">
+          <button class="burn tgt" data-burn="toward" aria-label="Burn toward target" data-tip="Toward: push straight at the target. Hold to burn" data-key="T">
+            <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="10" cy="30" r="3.4"/><path d="M13.5 26.5l9-9M17 17.5h5.5V23"/><path class="dot" d="M29 5.5l6 6-6 6-6-6z"/></svg>
+            <span>Toward</span>
+          </button>
+          <button class="burn tgt" data-burn="match" aria-label="Match target velocity" data-tip="Match: burn until you move with the target, so you stop drifting apart. Hold to burn" data-key="M">
+            <svg viewBox="0 0 40 40" aria-hidden="true"><path class="dot" d="M9 8.5l4.5 4.5L9 17.5 4.5 13z"/><circle cx="9" cy="27" r="3.4"/><path d="M16.5 13h17M29 8.5l4.5 4.5-4.5 4.5M16.5 27h17M29 22.5l4.5 4.5-4.5 4.5"/></svg>
+            <span>Match</span>
+          </button>
+        </div>
+
+        <div class="warp" role="group" aria-label="Time warp">
           <button class="icon-btn" id="warp-down" aria-label="Slower time" data-tip="Slower time" data-key="&lt;">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 12h11"/></svg>
           </button>
-          <button class="warp-value" id="warp-value" aria-label="Time warp. Tap for warp-to options" data-tip="Time warp. Click to jump ahead to your next Ap, Pe or closest approach"></button>
+          <button class="warp-value" id="warp-value" aria-label="Time warp. Tap for warp-to options" data-tip="How fast time runs. Click to jump ahead to your next Ap, Pe or closest approach"></button>
           <button class="icon-btn" id="warp-up" aria-label="Faster time" data-tip="Faster time" data-key="&gt;">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 12h11M12 6.5v11"/></svg>
           </button>
+          <button class="warp-to" id="warp-to" aria-label="Warp to" aria-haspopup="menu" aria-expanded="false" data-tip="Warp to: jump ahead to your next Ap, Pe, closest approach or planned burn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="fill" d="M5.5 6.5l8.5 5.5-8.5 5.5z"/><path d="M18 6.5v11"/></svg>
+            <span>Warp to</span>
+          </button>
+          <div class="pop-menu warp-menu hidden" id="warp-menu" role="menu"></div>
         </div>
-        <div class="warp-menu hidden" id="warp-menu" role="menu"></div>
       </div>
     </footer>
   </div>
@@ -222,7 +247,7 @@
         <button class="btn" id="pause-glossary">Glossary</button>
         <button class="btn ghost" id="pause-levels">All levels</button>
       </div>
-      <p class="keys">Keys: W/S prograde and retrograde, A/D radial in and out, T toward, M match, Shift key for fine control, B to plan a burn, &lt; and &gt; for warp, F to change focus, N for music, Esc to pause.</p>
+      <p class="keys">Keys: W/S prograde and retrograde, A/D radial in and out, T toward, M match, Shift key for fine control, B to plan a burn, &lt; and &gt; for warp, F to change what the camera is centred on, Z to fit the view, L to follow, N for music, Esc to pause.</p>
     </div>
   </div>
 

@@ -1,13 +1,44 @@
-/* Burn planner: the Plan chip, the planning panel (above the controls, where
+/* Burn planner: the Plan button, the planning panel (above the controls, where
    the hint strip sits) and the one-line countdown once a plan is approved. */
 
-.chip.plan-chip { color: var(--ok); border-color: rgba(155, 227, 180, 0.4); }
-.chip.plan-chip.on { background: var(--ok); border-color: var(--ok); color: var(--field); }
+/* Plan sits in the burn pad's bottom-left corner, mirroring Fine on the right */
+.plan-btn {
+  grid-column: 1;
+  grid-row: 3;
+  place-self: center;
+  width: calc(var(--cell) * 0.82);
+  height: calc(var(--cell) * 0.82);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid rgba(155, 227, 180, 0.5);
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+.plan-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.plan-btn svg .dash { stroke-dasharray: 2.4 2.3; }
+.plan-btn svg .node { fill: var(--ok); stroke: none; }
+.plan-btn:active { background: rgba(155, 227, 180, 0.16); }
+.plan-btn.on { background: var(--ok); border-color: var(--ok); }
+.plan-btn.on svg { stroke: var(--field); }
+.plan-btn.on svg .node { fill: var(--field); }
+@media (hover: hover) {
+  .plan-btn:not(.on):hover { background: rgba(155, 227, 180, 0.12); }
+}
 
 .planner, .planner-armed {
   position: absolute;
   left: var(--edge-l);
-  right: calc(var(--edge-r) + 96px);
+  right: var(--edge-r);
   bottom: calc(var(--edge-b) + var(--pad-h) + 10px);
   max-width: 400px;
   background: var(--panel);
@@ -144,7 +175,7 @@
 @media (max-height: 520px) and (orientation: landscape) {
   .planner, .planner-armed {
     left: calc(var(--edge-l) + var(--cell) * 3 + 20px);
-    right: calc(var(--edge-r) + 190px);
+    right: calc(var(--edge-r) + var(--right-w) + 10px);
     bottom: var(--edge-b);
     margin: 0 auto;
   }

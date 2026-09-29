@@ -162,7 +162,7 @@ test('flight school: coasting past apoapsis does not count as warping to it', ()
   const period = w.shipElements().period;
   const r = idle(w, st, (period / 50) * 1.2);
   assert.equal(r.met, false, 'passing Ap on its own must not complete the step');
-  assert.ok([...r.notes].some((n) => /warp readout/.test(n)), 'a note points to the warp readout as Ap goes by');
+  assert.ok([...r.notes].some((n) => /Warp to/.test(n)), 'a note points to Warp to as Ap goes by');
   // stopping a warp-to part way does not count either
   const o = w.warpOptions().find((x) => x.id === 'ap');
   w.warpTo(o.t, o.label);

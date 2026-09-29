@@ -12,7 +12,7 @@ export const LEVELS = [
     hints: [
       'Tap <b>Retrograde</b> briefly. Your orbit dips on the far side of Earth, and a lower orbit takes less time to go around.',
       'Watch the dashed <b>closest approach</b> line. Adjust with small taps until it is short, ideally under 10 km.',
-      'Tap the warp readout and choose <b>Closest approach</b>. Tap <b>Frame</b> to zoom in on both ships, then hold <b>Match</b> to cancel your relative speed.',
+      'Tap <b>Warp to</b> and choose <b>Closest approach</b>. Tap <b>Fit</b> to zoom in on both ships, then hold <b>Match</b> to cancel your relative speed.',
     ],
     lesson:
       'You slowed down and ended up moving faster around Earth. A retrograde burn lowers the far side of the orbit, which shortens the period, so you gain on anything in the old orbit. This is how real crews phase with the ISS.',

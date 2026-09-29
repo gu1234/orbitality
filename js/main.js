@@ -92,7 +92,7 @@ function setMode(mode) {
   $('pause').classList.toggle('hidden', mode !== 'paused');
   $('result').classList.toggle('hidden', mode !== 'result');
   $('grad').classList.toggle('hidden', mode !== 'grad');
-  closeWarpMenu();
+  closeMenus();
   if (mode !== 'flying') input.releaseAllBurns();
 }
 
@@ -470,8 +470,32 @@ function cycleFocus() {
   setFocus(next);
 }
 
+/** The camera button's menu: every focus option at once, the current one ticked. */
+function toggleFocusMenu() {
+  const menu = $('focus-menu');
+  if (!menu.classList.contains('hidden')) { closeMenus(); return; }
+  closeMenus();
+  if (app.mode !== 'flying') return;
+  const w = app.world;
+  menu.innerHTML = '<h3>Centre the camera on</h3>';
+  for (const f of focusOptions()) {
+    const b = document.createElement('button');
+    const on = sameFocus(f, cam.focus);
+    const kind = f.kind === 'ship' ? 'you' : f.kind === 'target' ? 'them' : 'body';
+    const name = f.kind === 'ship' ? 'Your ship' : f.kind === 'target' ? w.target.name : w.body(f.id).name;
+    b.setAttribute('role', 'menuitemradio');
+    b.setAttribute('aria-checked', String(on));
+    b.innerHTML = `<span><i class="swatch ${kind}"></i>${name}</span><span>${on ? '✓' : ''}</span>`;
+    b.addEventListener('click', () => setFocus(f)); // setFocus closes the menu
+    menu.appendChild(b);
+  }
+  menu.classList.remove('hidden');
+  $('btn-focus').setAttribute('aria-expanded', 'true');
+}
+
 function setFocus(f) {
   const w = app.world;
+  closeMenus();
   unlockByHand();
   cam.setFocus(f);
   if (f.kind === 'body' && f.id === 'sun') {
@@ -511,20 +535,20 @@ function framePoints() {
   return pts;
 }
 
-/** Lock the frame: the camera follows the ship and target on its own until the player pans, zooms or refocuses. */
+/** Follow (a locked frame): the camera keeps the ship and target in view on its own until the player pans, zooms or refocuses. */
 function setFrameLock(on) {
   if (app.frameLock === on) return;
   app.frameLock = on;
   app.frameKey = null;
-  const chip = $('btn-lock');
-  chip.classList.toggle('on', on);
-  chip.setAttribute('aria-pressed', String(on));
+  const btn = $('btn-lock');
+  btn.classList.toggle('on', on);
+  btn.setAttribute('aria-pressed', String(on));
 }
 
 function toggleFrameLock() {
   if (app.mode !== 'flying' || app.tut) return;
   setFrameLock(!app.frameLock);
-  toast(app.frameLock ? 'Frame locked: the camera follows you and the target' : 'Frame unlocked', false, 1600);
+  toast(app.frameLock ? 'Following: the camera keeps you and the target in view' : 'Stopped following', false, 1600);
 }
 
 /** Keep a locked frame on the ship and target. A change in what is framed (an SOI change,
@@ -542,7 +566,7 @@ function followFrame(dt) {
 function unlockByHand() {
   if (!app.frameLock || app.mode === 'menu') return;
   setFrameLock(false);
-  toast('Frame unlocked', false, 1200);
+  toast('Stopped following', false, 1200);
 }
 
 /** Pick the nearest object near a screen point and focus it. */
@@ -579,20 +603,25 @@ function warpStep(d) {
   updateHud(true);
 }
 
-function closeWarpMenu() {
+/** Close the warp-to and centre-on menus. */
+function closeMenus() {
   $('warp-menu').classList.add('hidden');
+  $('focus-menu').classList.add('hidden');
+  $('warp-to').setAttribute('aria-expanded', 'false');
+  $('btn-focus').setAttribute('aria-expanded', 'false');
 }
 
 function openWarpMenu() {
   const w = app.world;
   const menu = $('warp-menu');
-  if (!menu.classList.contains('hidden')) { closeWarpMenu(); return; }
+  if (!menu.classList.contains('hidden')) { closeMenus(); return; }
+  closeMenus();
   const opts = w.warpOptions();
   menu.innerHTML = '<h3>Warp to</h3>';
   if (w.warpTarget) {
     const b = document.createElement('button');
     b.innerHTML = '<span>Stop warping</span><span></span>';
-    b.addEventListener('click', () => { w.setWarpIndex(0); closeWarpMenu(); });
+    b.addEventListener('click', () => { w.setWarpIndex(0); closeMenus(); });
     menu.appendChild(b);
   }
   if (!opts.length) {
@@ -608,11 +637,12 @@ function openWarpMenu() {
     b.innerHTML = `<span>${label}</span><span>in ${fmtDur(o.t - w.t)}</span>`;
     b.addEventListener('click', () => {
       w.warpTo(o.t, label);
-      closeWarpMenu();
+      closeMenus();
     });
     menu.appendChild(b);
   }
   menu.classList.remove('hidden');
+  $('warp-to').setAttribute('aria-expanded', 'true');
 }
 
 // ------------------------------------------------------------------ HUD
@@ -724,16 +754,28 @@ function updateHud(force = false) {
   else if (w.burn.dir) html = `${fmtWarp(w.burn.warp)}<small>burning</small>`;
   else if (w.warpTarget) html = `${fmtWarp(w.effectiveWarp || w.warp)}<small>to ${w.warpTarget.label.toLowerCase()}</small>`;
   else if (w.effectiveWarp !== undefined && w.effectiveWarp < w.warp) html = `${fmtWarp(w.effectiveWarp)}<small>limited</small>`;
-  else html = fmtWarp(w.warp);
-  if (wv.innerHTML !== html) wv.innerHTML = html;
+  else html = fmtWarp(w.warp) + warpPips(w);
+  if (app.warpHtml !== html) { wv.innerHTML = html; app.warpHtml = html; }
   wv.classList.toggle('to', !!w.warpTarget);
+  $('warp-to').classList.toggle('on', !!w.warpTarget);
 
-  setText('btn-focus', cam.focusLabel(w));
+  setText('focus-name', cam.focusLabel(w));
 
   for (const b of document.querySelectorAll('.burn[data-burn]')) {
     b.classList.toggle('active', w.burn.dir === b.dataset.burn);
     if (!b.classList.contains('tgt')) b.disabled = w.status !== 'flying' || (!s.unlimited && s.fuel <= 0);
   }
+}
+
+/** The warp level meter: a pip per step up to the current one; steps above the cap near the target fade out. */
+function warpPips(w) {
+  const max = w.maxWarpIndex();
+  let h = '<span class="warp-pips" aria-hidden="true">';
+  for (let i = 0; i < WARPS.length; i++) {
+    const cls = i <= w.warpIndex ? ' class="on"' : i > max ? ' class="cap"' : '';
+    h += `<i style="--i:${i}"${cls}></i>`;
+  }
+  return `${h}</span>`;
 }
 
 const hasKeyboardPointer = matchMedia('(hover: hover) and (pointer: fine)');
@@ -803,7 +845,7 @@ function followSoi(from, to) {
 const input = new Input(canvas, {
   pan: (dx, dy) => { unlockByHand(); cam.pan(dx, dy); },
   zoomAt: (f, x, y) => { unlockByHand(); cam.zoomAt(f, x, y); },
-  tap: (x, y) => { closeWarpMenu(); if (app.mode === 'flying') pick(x, y); },
+  tap: (x, y) => { closeMenus(); if (app.mode === 'flying') pick(x, y); },
   doubleTap: () => { if (app.mode === 'flying') frame(); },
   hover: (dir) => { app.hoverDir = dir; },
   fine: (on) => { if (app.mode === 'flying') app.world?.setFine(on); },
@@ -815,7 +857,7 @@ const input = new Input(canvas, {
       return;
     }
     if (planner.armed) { cancelPlan(); toast('Planned burn cancelled', false, 1600); }
-    closeWarpMenu();
+    closeMenus();
     const w = app.world;
     if (!w.canBurn(dir)) {
       if (!w.ship.unlimited && w.ship.fuel <= 0) toast('Out of fuel', true, 1500);
@@ -864,7 +906,8 @@ $('tip-close').addEventListener('click', toggleTip);
 $('warp-down').addEventListener('click', () => warpStep(-1));
 $('warp-up').addEventListener('click', () => warpStep(1));
 $('warp-value').addEventListener('click', openWarpMenu);
-$('btn-focus').addEventListener('click', cycleFocus);
+$('warp-to').addEventListener('click', openWarpMenu);
+$('btn-focus').addEventListener('click', toggleFocusMenu);
 $('btn-frame').addEventListener('click', frame);
 $('btn-lock').addEventListener('click', toggleFrameLock);
 $('btn-plan').addEventListener('click', togglePlanner);
@@ -934,9 +977,10 @@ for (const id of ['btn-music', 'menu-music', 'pause-music']) music.bind($(id));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && app.mode === 'flying') setMode('paused');
 });
+// a press outside an open menu closes it; its own buttons toggle it on click
 document.addEventListener('pointerdown', (e) => {
-  const menu = $('warp-menu');
-  if (!menu.classList.contains('hidden') && !menu.contains(e.target) && e.target !== $('warp-value')) closeWarpMenu();
+  const inside = e.target.closest?.('.pop-menu, #warp-value, #warp-to, #btn-focus');
+  if (!inside && document.querySelector('.pop-menu:not(.hidden)')) closeMenus();
 });
 
 // ------------------------------------------------------------------ burn planner
@@ -950,7 +994,7 @@ function togglePlanner() {
   if (planner.open) { planner.close(); return; }
   if (planner.armed) cancelPlan();
   input.releaseAllBurns();
-  closeWarpMenu();
+  closeMenus();
   if (planner.show()) planner.tick(0);
 }
 
@@ -981,10 +1025,10 @@ function syncPlannerUi() {
   const flight = $('flight');
   flight.classList.toggle('planning', planner.open);
   flight.classList.toggle('plan-armed', !!planner.armed);
-  const chip = $('btn-plan');
-  chip.classList.toggle('hidden', !!app.tut); // Flight School counts burns by button
-  chip.classList.toggle('on', planner.open);
-  chip.setAttribute('aria-pressed', String(planner.open));
+  const btn = $('btn-plan');
+  btn.classList.toggle('hidden', !!app.tut); // Flight School counts burns by button
+  btn.classList.toggle('on', planner.open);
+  btn.setAttribute('aria-pressed', String(planner.open));
   plannerPanel.render();
 }
 

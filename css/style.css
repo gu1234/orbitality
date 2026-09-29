@@ -88,7 +88,8 @@ button:focus-visible, summary:focus-visible {
   --edge-l: calc(var(--safe-l) + 10px);
   --edge-r: calc(var(--safe-r) + 10px);
   --pad-h: calc(var(--cell) * 3 + 8px);
-  --right-h: 102px;
+  --right-h: calc(var(--cell) + 110px); /* camera bar, target burns and warp strip */
+  --right-w: 212px;
 }
 
 #flight > *, .upper > * { pointer-events: auto; }
@@ -244,11 +245,11 @@ button:focus-visible, summary:focus-visible {
 .fuel.low .fuel-head .v { color: var(--warn); }
 .fuel.unlimited .fuel-bar { display: none; }
 
-/* hint strip: above the controls, leaving room for the view tools on the right */
+/* hint strip: above the controls (the right-hand column is no taller than the pad) */
 .tip {
   position: absolute;
   left: var(--edge-l);
-  right: calc(var(--edge-r) + 96px);
+  right: var(--edge-r);
   bottom: calc(var(--edge-b) + var(--pad-h) + 10px);
   max-width: 560px;
   display: flex;
@@ -319,28 +320,6 @@ button:focus-visible, summary:focus-visible {
   color: var(--chalk-dim);
 }
 .tip-close:active { background: rgba(235, 230, 216, 0.1); }
-
-.view-tools {
-  position: absolute;
-  right: var(--edge-r);
-  bottom: calc(var(--edge-b) + var(--right-h) + 10px);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.chip {
-  font-family: var(--display);
-  font-size: 15px;
-  font-weight: 500;
-  min-width: 80px;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 17px;
-  background: var(--panel);
-  border: 1px solid var(--hair);
-}
-.chip:active { background: var(--panel-solid); }
-.chip.lock-chip.on { background: var(--ship); border-color: var(--ship); color: var(--field); }
 
 /* ---------------------------------------------------------------- controls */
 
@@ -436,45 +415,115 @@ button:focus-visible, summary:focus-visible {
   .fine-toggle { display: block; }
 }
 
+/* Right-hand column, top to bottom: camera, target burns, time warp. One column,
+   so nothing floats over the map or the target panel on short screens. */
 .right-controls {
   position: relative;
+  width: var(--right-w);
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: stretch;
+  gap: 6px;
 }
 
-.target-actions { display: flex; gap: 6px; }
-.burn.tgt {
-  width: 76px;
+/* camera: centre on…, fit ship + target, follow them */
+.view-tools {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+}
+.cam-btn {
+  flex: 1 1 0;
+  min-width: 0;
   height: 44px;
-  border-radius: 22px;
-  border-color: rgba(255, 95, 162, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 4px;
+  border-radius: 12px;
 }
-.burn.tgt span { font-size: 16px; color: var(--target); }
-.burn.tgt.active, .burn.tgt:active { background: var(--target); border-color: var(--target); }
-.burn.tgt.active span { color: var(--field); }
-
-.warp {
+.cam-btn.cam-focus { flex-grow: 1.4; }
+.cam-btn svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: var(--chalk);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cam-btn svg .fill { fill: var(--chalk); stroke: none; }
+.cam-btn svg .you { fill: var(--ship); stroke: none; }
+.cam-btn svg .them { fill: var(--target); stroke: none; }
+.cam-label {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
+  max-width: 100%;
+  font-family: var(--display);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--chalk-dim);
+  white-space: nowrap;
+}
+.cam-focus .cam-label { color: var(--chalk); }
+#focus-name { overflow: hidden; text-overflow: ellipsis; }
+.cam-label .caret { width: 8px; height: 8px; stroke: var(--chalk-dim); stroke-width: 1.6; }
+.cam-btn:active, .cam-btn[aria-expanded="true"] { background: rgba(235, 230, 216, 0.1); }
+.cam-btn.on { background: var(--ship); }
+.cam-btn.on svg { stroke: var(--field); }
+.cam-btn.on .cam-label { color: var(--field); }
+
+/* target burns: held like the pad's burn buttons, in the target's colour */
+.target-actions { display: flex; gap: 6px; }
+.burn.tgt {
+  flex: 1 1 0;
+  height: var(--cell);
+  border-radius: calc(var(--cell) / 2);
+  border-color: rgba(255, 95, 162, 0.5);
+}
+.burn.tgt svg { stroke: var(--target); stroke-width: 2.2; stroke-linejoin: round; }
+.burn.tgt svg .dot { fill: var(--target); }
+.burn.tgt span { font-size: 12px; }
+.burn.tgt.active, .burn.tgt:active { background: var(--target); border-color: var(--target); }
+.burn.tgt:active svg { stroke: var(--field); }
+.burn.tgt.active svg .dot, .burn.tgt:active svg .dot { fill: var(--field); }
+.burn.tgt:active span { color: var(--field); }
+
+/* time warp: slower, rate (with a level meter), faster | warp to */
+.warp {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
   background: var(--panel);
   border: 1px solid var(--hair);
   border-radius: 24px;
   padding: 3px;
 }
-.warp .icon-btn { border: 0; background: transparent; width: 42px; height: 42px; }
+.warp .icon-btn { border: 0; background: transparent; width: 40px; height: 40px; }
 .warp .icon-btn:active { background: rgba(235, 230, 216, 0.1); }
 .warp-value {
-  min-width: 92px;
-  height: 42px;
-  padding: 0 8px;
+  flex: 1;
+  min-width: 66px;
+  height: 40px;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   font-family: var(--display);
   font-weight: 600;
   font-size: 19px;
   font-variant-numeric: tabular-nums;
-  border-radius: 21px;
+  border-radius: 20px;
   line-height: 1;
 }
 .warp-value small {
@@ -482,16 +531,59 @@ button:focus-visible, summary:focus-visible {
   font-size: 11px;
   font-weight: 400;
   color: var(--chalk-dim);
-  margin-top: 2px;
 }
 .warp-value.to { color: var(--ship); }
 .warp-value:active { background: rgba(235, 230, 216, 0.1); }
+/* one pip per warp step, rising like a speed ramp; steps above the cap near the target fade out */
+.warp-pips { display: flex; align-items: flex-end; gap: 1px; height: 7px; }
+.warp-pips i { width: 3px; height: calc(2px + var(--i) * 0.36px); border-radius: 1px; background: rgba(235, 230, 216, 0.3); }
+.warp-pips i.on { background: var(--ship); }
+.warp-pips i.cap { height: 2px; background: rgba(235, 230, 216, 0.14); }
+.warp-to {
+  height: 40px;
+  margin-left: 1px;
+  padding: 0 10px 0 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-left: 1px solid var(--hair);
+  border-radius: 0 20px 20px 0;
+}
+.warp-to svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--chalk);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.warp-to svg .fill { fill: var(--chalk); }
+.warp-to span {
+  font-family: var(--display);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--chalk-dim);
+  white-space: nowrap;
+}
+.warp-to:active, .warp-to[aria-expanded="true"] { background: rgba(235, 230, 216, 0.1); }
+.warp-to.on svg { stroke: var(--ship); }
+.warp-to.on svg .fill { fill: var(--ship); }
+.warp-to.on span { color: var(--ship); }
 
-.warp-menu {
+@media (hover: hover) {
+  .cam-btn:not(.on):hover, .warp .icon-btn:hover, .warp-value:hover, .warp-to:hover { background: rgba(235, 230, 216, 0.07); }
+}
+
+/* pop-up menus: warp to (above the warp strip) and centre on (above the camera bar) */
+.pop-menu {
   position: absolute;
   right: 0;
   bottom: calc(100% + 8px);
   min-width: 230px;
+  overflow-y: auto;
   background: var(--panel-solid);
   border: 1px solid var(--hair-strong);
   border-radius: 4px;
@@ -501,16 +593,24 @@ button:focus-visible, summary:focus-visible {
   gap: 2px;
   z-index: 5;
 }
-.warp-menu h3 {
+/* each menu may use the height above what it pops out of */
+.warp-menu { max-height: calc(100vh - var(--edge-t) - var(--edge-b) - 60px); max-height: calc(100dvh - var(--edge-t) - var(--edge-b) - 60px); }
+.focus-menu {
+  min-width: 190px;
+  max-height: calc(100vh - var(--edge-t) - var(--edge-b) - var(--right-h) - 10px);
+  max-height: calc(100dvh - var(--edge-t) - var(--edge-b) - var(--right-h) - 10px);
+}
+.pop-menu h3 {
   margin: 4px 8px 6px;
   font-family: var(--display);
   font-weight: 500;
   font-size: 14px;
   color: var(--chalk-dim);
 }
-.warp-menu button {
+.pop-menu button {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 16px;
   padding: 10px 10px;
   border-radius: 3px;
@@ -518,9 +618,21 @@ button:focus-visible, summary:focus-visible {
   font-family: var(--display);
   font-size: 17px;
 }
-.warp-menu button span:last-child { color: var(--chalk-dim); font-variant-numeric: tabular-nums; }
-.warp-menu button:active, .warp-menu button:hover { background: rgba(235, 230, 216, 0.08); }
-.warp-menu .empty { padding: 8px 10px; color: var(--chalk-dim); font-size: 14px; }
+.pop-menu button span:last-child { color: var(--chalk-dim); font-variant-numeric: tabular-nums; }
+.pop-menu button:active, .pop-menu button:hover { background: rgba(235, 230, 216, 0.08); }
+.pop-menu .empty { padding: 8px 10px; color: var(--chalk-dim); font-size: 14px; }
+.focus-menu .swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: var(--chalk-dim);
+}
+.focus-menu .swatch.you { background: var(--ship); }
+.focus-menu .swatch.them { background: var(--target); border-radius: 1px; transform: rotate(45deg) scale(0.9); }
+.focus-menu button[aria-checked="true"] { color: var(--ship); }
+.focus-menu button[aria-checked="true"] span:last-child { color: var(--ship); }
 
 .burn-readout {
   position: fixed;
@@ -782,9 +894,10 @@ button:focus-visible, summary:focus-visible {
   .tip-pager { margin-left: 2px; gap: 0; }
   .tip-nav { width: 30px; height: 30px; }
   .tip-count { min-width: 26px; font-size: 14px; }
-  .burn.tgt { width: 70px; height: 42px; }
-  .warp-value { min-width: 74px; font-size: 17px; }
-  .warp .icon-btn { width: 38px; height: 40px; }
+  #flight { --right-w: 196px; }
+  .warp .icon-btn { width: 36px; }
+  .warp-value { min-width: 62px; font-size: 17px; }
+  .warp-to { padding: 0 8px 0 7px; }
   #menu { background: rgba(15, 31, 54, 0.9); }
   .menu-inner { padding-left: calc(var(--safe-l) + 20px); }
   .card { padding: 20px 18px 16px; }
@@ -794,8 +907,14 @@ button:focus-visible, summary:focus-visible {
 /* short landscape screens: hint sits between the pad and the right-hand controls */
 @media (max-height: 520px) and (orientation: landscape) {
   :root { --cell: 46px; }
-  #flight { --edge-t: calc(var(--safe-t) + 6px); }
+  #flight { --edge-t: calc(var(--safe-t) + 6px); --right-w: 196px; }
   .icon-btn { width: 34px; height: 34px; }
+  .warp .icon-btn { width: 36px; height: 40px; }
+  .warp-value { min-width: 62px; font-size: 17px; }
+  .warp-to { padding: 0 8px 0 7px; }
+  .pop-menu { padding: 4px; }
+  .pop-menu h3 { margin: 2px 8px 2px; }
+  .pop-menu button { padding: 7px 10px; font-size: 16px; }
   .upper { top: calc(var(--edge-t) + 40px); }
   .panel { padding: 5px 8px 6px; }
   .row { line-height: 1.25; }
@@ -805,7 +924,7 @@ button:focus-visible, summary:focus-visible {
   .fuel { margin-top: 4px; padding-top: 4px; }
   .tip {
     left: calc(var(--edge-l) + var(--cell) * 3 + 20px);
-    right: calc(var(--edge-r) + 190px);
+    right: calc(var(--edge-r) + var(--right-w) + 10px);
     bottom: var(--edge-b);
     margin: 0 auto;
   }

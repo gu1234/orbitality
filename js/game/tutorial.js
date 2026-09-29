@@ -60,7 +60,7 @@ function warpedToAp(w, ctx) {
 function driftedPastNote(w, ctx, name) {
   const a = apsides(w);
   if (w.warpTarget || !a.closed || !near(a.el, 'ap', 15 * DEG) || warpedToAp(w, ctx)) return null;
-  return `That was ${name.toLowerCase()} going by on its own. Tap the warp readout and choose <b>${name}</b> to jump to the next one and stop right on it.`;
+  return `That was ${name.toLowerCase()} going by on its own. Tap <b>Warp to</b> and choose <b>${name}</b> to jump to the next one and stop right on it.`;
 }
 
 const IMPACT_NOTE = 'The red <b>×</b> means your path now hits Earth. Tap <b>Prograde</b> to lift it back above the ground before you get there.';
@@ -121,7 +121,7 @@ const STEPS = [
     title: 'You are in orbit',
     text:
       'The amber arrow is you, 400 km above Earth, and the solid line is your path. You are falling toward Earth all the time, but you are also moving sideways at 7.7 km/s, so you keep missing it. That is an orbit.',
-    goal: 'Speed up time to <b>500×</b> with the <b>›</b> button next to the warp readout',
+    goal: 'Speed up time to <b>500×</b> with the <b>+</b> button beside the time warp',
     highlight: ['#warp-up'],
     check: (w) => w.warp >= 500,
     progress: (w) => `Time warp ${fmtWarp(w.warp)}`,
@@ -161,8 +161,8 @@ const STEPS = [
     title: 'Apoapsis and periapsis',
     text:
       'Your orbit is now an ellipse. Its highest point is the <b>apoapsis</b> (Ap) and its lowest point is the <b>periapsis</b> (Pe). Around Earth they are also called <b>apogee</b> and <b>perigee</b>. The panel at the top left lists both.',
-    goal: 'Tap the warp readout and choose <b>Apoapsis</b> to jump there',
-    highlight: ['#warp-value', '#row-ap', '#row-pe'],
+    goal: 'Tap <b>Warp to</b> and choose <b>Apoapsis</b> to jump there',
+    highlight: ['#warp-to', '#row-ap', '#row-pe'],
     pulse: ['ap', 'pe'],
     doneWarp: 1,
     check(w, ctx) {
@@ -206,7 +206,7 @@ const STEPS = [
         return 'You overshot. Your old apoapsis is now the periapsis, and a new Ap has appeared on the far side. Tap <b>Retrograde</b> to bring it back down.';
       }
       if (!burned && !near(a.el, 'ap', 20 * DEG)) {
-        return 'You have moved away from apoapsis. Tap the warp readout and choose <b>Apoapsis</b> to get back there first.';
+        return 'You have moved away from apoapsis. Tap <b>Warp to</b> and choose <b>Apoapsis</b> to get back there first.';
       }
       return null;
     },
@@ -273,8 +273,8 @@ const STEPS = [
     title: 'Perihelion and aphelion',
     text:
       'Every orbit has a low point and a high point, whatever it goes around. Around the Sun they are the <b>perihelion</b> and <b>aphelion</b> (<i>helios</i> is Greek for Sun). You are now on the path from Earth to Mars: perihelion at Earth\'s distance from the Sun, aphelion at Mars\'s.',
-    goal: 'Tap the warp readout and choose <b>Aphelion</b>',
-    highlight: ['#warp-value', '#row-ap', '#row-pe'],
+    goal: 'Tap <b>Warp to</b> and choose <b>Aphelion</b>',
+    highlight: ['#warp-to', '#row-ap', '#row-pe'],
     pulse: ['ap', 'pe'],
     apsisNames: true,
     doneWarp: 1,

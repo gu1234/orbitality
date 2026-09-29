@@ -75,8 +75,8 @@
   top: calc(var(--edge-t) + 48px);
   right: var(--edge-r);
   width: min(360px, calc(100% - var(--edge-l) - var(--edge-r)));
-  /* stays clear of the focus/frame chips and the warp control below it */
-  max-height: calc(100% - var(--edge-t) - 48px - var(--edge-b) - var(--right-h) - 96px);
+  /* stays clear of the camera bar and the warp strip below it (Flight School has no target burns) */
+  max-height: calc(100% - var(--edge-t) - 48px - var(--edge-b) - (var(--right-h) - var(--cell) - 6px) - 12px);
   overflow-y: auto;
   overscroll-behavior: contain;
   display: flex;
@@ -229,15 +229,18 @@
 .hohmann figcaption { margin-top: 4px; font-size: 13px; color: var(--chalk-dim); }
 .hohmann figcaption b { color: var(--chalk); font-weight: 600; }
 
+/* Follow stays off in Flight School, which frames each step itself */
+#flight.tutorial #btn-lock { display: none; }
+
 /* ---------------------------------------------------------------- small screens */
 
 @media (max-width: 560px) {
-  /* full width, above the pad and the focus/frame chips */
+  /* full width, above the pad and the right-hand controls */
   .coach {
     top: auto;
     left: var(--edge-l);
     width: auto;
-    bottom: calc(var(--edge-b) + var(--right-h) + 94px);
+    bottom: calc(var(--edge-b) + var(--pad-h) + 12px);
     max-height: 40vh;
     padding: 8px 8px 8px 12px;
     gap: 6px;
@@ -253,7 +256,7 @@
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
-  /* no room for the chips next to the coach: double-tap still frames the view */
+  /* no room for the camera bar next to the coach: double-tap still fits the view */
   #flight.tutorial .view-tools { display: none; }
   .coach {
     top: calc(var(--edge-t) + 40px);
