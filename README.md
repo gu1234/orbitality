@@ -16,6 +16,8 @@ Add `?all` to the URL to unlock every level while testing.
 
 ### Worktrees
 
+The quickest start: `./start_server.sh` runs the worktree page below in the background and opens it (main's game is its **main** row), and `./stop_server.sh` stops it.
+
 ```sh
 npm run worktrees        # lists every git worktree on http://localhost:8070
 npm run worktrees:start  # the same, in the background (log in tools/.cache/worktrees.log)
