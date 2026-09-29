@@ -31,6 +31,13 @@ export class Camera {
     return b.absPos(world.t);
   }
 
+  /** Absolute velocity of a focus (the current one by default), in km/s. */
+  focusVel(world, f = this.focus) {
+    if (f.kind === 'ship') { const s = world.shipAbs(); return { x: s.vx, y: s.vy }; }
+    if (f.kind === 'target' && world.target) { const s = world.targetAbs(); return { x: s.vx, y: s.vy }; }
+    return (world.body(f.id) || world.ship.body).absVel(world.t);
+  }
+
   focusLabel(world) {
     const f = this.focus;
     if (f.kind === 'ship') return 'Ship';
@@ -49,6 +56,8 @@ export class Camera {
   update(world, realDt) {
     if (this.anim) {
       const a = this.anim;
+      const v = a.track?.(); // a moving fit re-aims every frame so it lands on where things are now
+      if (v) { a.s1 = v.scale; a.x1 = v.offX; a.y1 = v.offY; }
       a.t = Math.min(1, a.t + realDt / a.dur);
       const k = a.t < 1 ? 1 - Math.pow(1 - a.t, 3) : 1;
       this.scale = Math.exp(Math.log(a.s0) + (Math.log(a.s1) - Math.log(a.s0)) * k);
@@ -122,9 +131,13 @@ export class Camera {
     return { scale: s, offX: ox, offY: oy };
   }
 
-  /** Fit points into a screen rectangle, animated or instantly (see fitView). */
+  /**
+   * Fit points into a screen rectangle, animated or instantly (see fitView). Pass a function
+   * returning the points to have the animation follow them while it plays.
+   */
   fitPoints(world, pts, { rect = null, pad = 0.1, dur = 0.5, instant = false } = {}) {
-    const v = this.fitView(world, pts, { rect, pad });
+    const get = typeof pts === 'function' ? pts : () => pts;
+    const v = this.fitView(world, get(), { rect, pad });
     if (!v) return;
     if (instant) {
       this.anim = null;
@@ -133,6 +146,7 @@ export class Camera {
       this.offY = v.offY;
     } else {
       this.animateTo(v.scale, v.offX, v.offY, dur);
+      if (get !== pts) this.anim.track = () => this.fitView(world, pts(), { rect, pad });
     }
   }
 

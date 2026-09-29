@@ -527,27 +527,55 @@ function setFocus(f) {
 }
 
 function frame() {
-  cam.fitPoints(app.world, framePoints(), { rect: freeRect(), pad: 0.08 });
+  // centre on something that moves with the frame, or it slides away as soon as it lands
+  // (a Follow lock re-fits every frame anyway)
+  if (!app.frameLock) {
+    const f = frameAnchor(framePoints());
+    if (!sameFocus(f, cam.focus)) {
+      cam.refocus(app.world, f);
+      updateHud(true);
+    }
+  }
+  cam.fitPoints(app.world, framePoints, { rect: freeRect(), pad: 0.08 });
 }
 
-/** What Frame fits: the ship and the target, or the ship's orbit when the target is elsewhere. */
+/**
+ * What Fit centres on so the fitted view stays put: of the current focus, the ship, the
+ * target and the ship's body, whichever moves most like the frame's centre. The current
+ * focus stays unless another is clearly better.
+ */
+function frameAnchor(pts) {
+  const w = app.world;
+  // the centre of the frame moves with the points that set its edges
+  const edge = (k, sign) => pts.reduce((a, p) => sign * (p[k] + sign * (p.r || 0)) > sign * (a[k] + sign * (a.r || 0)) ? p : a);
+  const vx = (edge('x', -1).vx + edge('x', 1).vx) / 2;
+  const vy = (edge('y', -1).vy + edge('y', 1).vy) / 2;
+  const drift = (f) => { const v = cam.focusVel(w, f); return Math.hypot(v.x - vx, v.y - vy); };
+  const opts = [{ kind: 'ship' }, { kind: 'body', id: w.ship.body.id }];
+  if (w.target && w.target.body === w.ship.body) opts.splice(1, 0, { kind: 'target' });
+  const best = opts.reduce((a, f) => (drift(f) < drift(a) ? f : a));
+  return drift(cam.focus) <= 1.5 * drift(best) + 1e-9 ? cam.focus : best;
+}
+
+/** What Frame fits: the ship and the target, or the ship's orbit when the target is elsewhere. Each point carries its velocity. */
 function framePoints() {
   const w = app.world;
   const pts = [];
   const s = w.shipAbs();
-  pts.push({ x: s.x, y: s.y });
+  pts.push({ x: s.x, y: s.y, vx: s.vx, vy: s.vy });
   if (w.target && (w.target.body === w.ship.body)) {
     const t = w.targetAbs();
-    pts.push({ x: t.x, y: t.y });
+    pts.push({ x: t.x, y: t.y, vx: t.vx, vy: t.vy });
     const rel = w.targetRelative();
     if (rel.dist < w.catchDist * 3) {
       pts[0].r = w.catchDist * 1.5;
     }
   } else {
     const b = w.ship.body.absPos(w.t);
+    const bv = w.ship.body.absVel(w.t);
     const el = w.shipElements();
     const r = el.e < 1 ? Math.min(el.ra, w.ship.body.soi) : Math.hypot(w.ship.x, w.ship.y);
-    pts.push({ x: b.x, y: b.y, r: r * 1.05 });
+    pts.push({ x: b.x, y: b.y, r: r * 1.05, vx: bv.x, vy: bv.y });
   }
   return pts;
 }
