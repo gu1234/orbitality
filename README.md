@@ -59,6 +59,14 @@ Instead of burning live, you can plan a burn and approve it. Tap the green plan 
 
 - Planets are drawn from real imagery, seen **from above their north poles**, since the camera looks down on the Solar System. Each one spins at its real rotation rate and is half lit by the Sun. Earth has drifting clouds and city lights on its night side, the Moon always shows Earth the same face, and Saturn's rings carry the planet's shadow.
 
+- Everything is at **real scale**: distances, sizes and masses are real, so small bodies are drawn with a minimum size of a pixel or two. Beyond the planets, the map has:
+  - **Moons**: Phobos and Deimos, Jupiter's four big moons (placed in their real 1 : 2 : 4 resonance), seven of Saturn's including Titan, five of Uranus's, Triton, and Charon. Moons whose orbits are tipped over with their planet (Uranus's, Triton, Charon) circle clockwise, as seen from above.
+  - **Dwarf planets and big asteroids** on their real elliptical orbits: Ceres, Vesta, Pallas and Hygiea in the asteroid belt, and Pluto, Haumea, Makemake and Eris further out. Pluto sits in its real place relative to Neptune, so its 3:2 resonance keeps it far from Neptune even though its orbit dips inside Neptune's.
+  - **Belts**: the main asteroid belt, Jupiter's Trojans and Hildas, and the Kuiper belt, as a few thousand faint dots on their own orbits. They are a sample for the eye: no gravity, and each dot stands for thousands of real objects. Zoom in and the belt is what it really is, nearly empty space.
+- Every moon, dwarf planet and asteroid has its own sphere of influence, so you can fly there and orbit it (the Sandbox has no fuel limit). The exceptions are Phobos, Deimos and Mimas, whose spheres of influence would end at or below their surfaces. You can hit them but not orbit them.
+- Tap a moon, dwarf planet or asteroid to focus it and see a line about it. Names are drawn most important first and skipped when they would overlap.
+- Orbits are flattened into one plane, and the planets and moons keep circular orbits, so the levels' transfer windows stay simple.
+
 - **Amber** is you. The solid line is your predicted path. Dashed lines are later legs after a sphere-of-influence change.
 - **Magenta** is the target and its orbit.
 - **Ap / Pe** markers label the high and low points of your orbit. A red **×** means the orbit hits the surface.
@@ -84,7 +92,7 @@ The coach panel shows a live readout for each goal and a note when you go off tr
 
 Every word of orbital flight in the game's text is a link: briefings, hints, the Flight School coach, results, the welcome card, and the names in the telemetry and target panels. Links have a dotted blue underline. Tap one and a card opens with a one-line definition, an animated diagram and a longer explanation. Terms inside a card are links too (with **Back**), and **See also** points to related ones. Time stands still while a card is open.
 
-The animations use real two-body motion scaled down, so ships really do slow down at apoapsis, and burns really reshape the orbit. They cover the orbit itself (Newton's cannon), prograde, retrograde, radial, apsides around Earth, the Moon and the Sun, period, circularizing, ellipses, time warp, Δv, the rocket equation, Hohmann transfers, phase angle, phasing, closest approach, relative velocity, spheres of influence, encounters, capture, hyperbolas, escape, the Oberth effect, gravity wells, geostationary orbit, transfer windows and bi-elliptic transfers. With reduced motion turned on, each card shows a still frame with a play button.
+The animations use real two-body motion scaled down, so ships really do slow down at apoapsis, and burns really reshape the orbit. They cover the orbit itself (Newton's cannon), prograde, retrograde, radial, apsides around Earth, the Moon and the Sun, period, circularizing, ellipses, time warp, Δv, the rocket equation, Hohmann transfers, phase angle, phasing, closest approach, relative velocity, spheres of influence, encounters, capture, hyperbolas, escape, the Oberth effect, gravity wells, geostationary orbit, transfer windows, bi-elliptic transfers, the asteroid belt (crowded from afar, empty up close) and dwarf planets (Pluto's 3:2 resonance with Neptune). With reduced motion turned on, each card shows a still frame with a play button.
 
 The **Glossary** page (main menu or pause menu) lists every term with its full explanation, a search box, and a **Watch** button for each animation.
 

@@ -22,7 +22,8 @@ function childDistance(c, st, t) {
  * Coast `s` (mutated in place) from time t for up to dt seconds, stopping at the
  * first event. SOI transitions are applied to `s` before returning.
  * Returns { dt: time actually advanced, event: null | { type, t, from, to, rel } }
- *   type: 'impact' | 'exit' | 'enter'; rel is the state in the old frame at the event.
+ *   type: 'impact' | 'exit' | 'enter'; rel is the state in the old frame at the event;
+ *   hit is the body crashed into (the frame's body, or a tiny moon in it).
  */
 export function advance(s, t, dt) {
   if (dt <= 0) return { dt: 0, event: null };
@@ -36,7 +37,7 @@ export function advance(s, t, dt) {
   const rMax = open ? Infinity : el.ra;
   let kids = null;
   for (const c of body.children) {
-    if (rMax >= c.a - c.soi && rMin <= c.a + c.soi) (kids || (kids = [])).push(c);
+    if (rMax >= c.rMin - c.soi && rMin <= c.rMax + c.soi) (kids || (kids = [])).push(c);
   }
 
   if (!canExit && !canImpact && !kids) {
@@ -80,14 +81,15 @@ export function advance(s, t, dt) {
     };
     if (canImpact) consider('impact', null, (st) => Math.hypot(st.x, st.y) < body.radius);
     if (canExit) consider('exit', body.parent, (st) => Math.hypot(st.x, st.y) > body.soi);
-    if (kids) for (const c of kids) consider('enter', c, (st, tt) => childDistance(c, st, tt) < 0);
+    // a tiny moon has no SOI of its own (it is its surface): reaching it is a crash
+    if (kids) for (const c of kids) consider(c.tiny ? 'impact' : 'enter', c, (st, tt) => childDistance(c, st, tt) < 0);
 
     if (best) {
       // Land on the "event happened" side of the boundary so we never ping-pong.
       kepler(s.x, s.y, s.vx, s.vy, mu, bestT, s);
       const te = tNow + bestT;
       const rel = { x: s.x, y: s.y, vx: s.vx, vy: s.vy };
-      const event = { type: best.type, t: te, from: body, to: body, rel };
+      const event = { type: best.type, t: te, from: body, to: body, rel, hit: best.type === 'impact' ? best.other || body : null };
       if (best.type === 'exit') {
         body.relPos(te, tp);
         body.relVel(te, tv);

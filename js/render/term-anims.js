@@ -1631,6 +1631,110 @@ SCENES.bielliptic = () => {
   };
 };
 
+/** The asteroid belt: a crowded ring from afar, empty space up close. */
+SCENES.belt = () => {
+  const S = { x: 180, y: 100 };
+  const PX_AU = 17.3; // Jupiter at 5.2 AU fits the card
+  const KM_AU = 149.6e6;
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const dots = [];
+  for (let i = 0; i < 420; i++) {
+    const a = 2.1 + 1.2 * rnd();
+    dots.push({ a, th: TAU * rnd(), w: 0.62 / a ** 1.5 }); // rad per s, Mars-ish pace
+  }
+  const Pf = { x: S.x + 2.75 * PX_AU * Math.cos(35 * DEG), y: S.y + 2.75 * PX_AU * Math.sin(35 * DEG) };
+  const Z1 = 200 / ((1e6 / KM_AU) * PX_AU); // zoomed in: a million km is 200 px
+  const tz0 = 4.2, tz1 = 8.6, dur = 13.5;
+  // up close: three neighbours about a million km (200 px) apart
+  const specks = [[70, 64], [262, 142], [318, 34]];
+  return {
+    dur,
+    still: 3,
+    draw(g, t) {
+      g.clear();
+      const k = seg(t, tz0, tz1);
+      const e = k * k * (3 - 2 * k);
+      const z = Math.exp(Math.log(Z1) * e);
+      // the zoom point slides to the middle of the card as we close in
+      const cx = Pf.x + (180 - Pf.x) * e, cy = Pf.y + (100 - Pf.y) * e;
+      const X = (x) => cx + (x - Pf.x) * z, Y = (y) => cy + (y - Pf.y) * z;
+      const far = 1 - seg(t, tz0, tz0 + 1.2);
+      if (far > 0) {
+        for (const [r, name, col] of [[1.52, 'Mars', C.mars], [5.2, 'Jupiter', '#c9b79c']]) {
+          g.circle(X(S.x), Y(S.y), r * PX_AU * z, C.faint, { alpha: far });
+          const th = 0.5 + t * 0.62 / r ** 1.5;
+          const px = X(S.x + r * PX_AU * Math.cos(th)), py = Y(S.y + r * PX_AU * Math.sin(th));
+          g.dot(px, py, 2.6, col, far);
+          g.text(name, px + 6, py + 6, { color: C.dim, size: 11, alpha: far });
+        }
+        g.body(X(S.x), Y(S.y), 5, 'sun');
+      }
+      for (const d of dots) {
+        const th = d.th + d.w * t;
+        const x = X(S.x + d.a * PX_AU * Math.cos(th)), y = Y(S.y + d.a * PX_AU * Math.sin(th));
+        if (x > -2 && x < W + 2 && y > -2 && y < H + 2) g.dot(x, y, 0.9, '#d6c8b0', 0.75);
+      }
+      if (t < tz0 + 0.4) g.circle(Pf.x, Pf.y, 7, C.term, { width: 1.2, alpha: seg(t, 1.8, 2.6) * (1 - seg(t, tz0, tz0 + 0.4)) });
+      const near = seg(t, tz1 - 0.6, tz1 + 0.6);
+      if (near > 0) {
+        for (const [x, y] of specks) {
+          g.dot(x, y, 1.1, '#d6c8b0', near);
+          g.circle(x, y, 6, C.faint, { alpha: near });
+        }
+        g.line(20, 16, 220, 16, C.term, { width: 1.4, alpha: near });
+        g.line(20, 12, 20, 20, C.term, { alpha: near });
+        g.line(220, 12, 220, 20, C.term, { alpha: near });
+        g.text('1 million km', 120, 26, { color: C.term, align: 'center', size: 11, alpha: near });
+      }
+      if (t < tz0) return 'From afar, the asteroid belt between Mars and Jupiter looks crowded.';
+      if (t < tz1) return 'Zoom in on it…';
+      return 'Up close it is empty space. Neighbours are typically a million km apart, nearly three times as far as the Moon is from Earth.';
+    },
+  };
+};
+
+/** Pluto crosses Neptune's orbit, but the 3:2 resonance keeps them apart. */
+SCENES.resonance = () => {
+  const F = { x: 200, y: 100 };
+  const K = 2; // px per AU
+  const TP = 6.4, TN = (TP * 2) / 3;
+  const aP = 39.48 * K, e = 0.2488, rN = 30.07 * K;
+  const o = Orbit.apsides(aP * (1 - e), aP * (1 + e), Math.PI, 1, (4 * Math.PI * Math.PI * aP ** 3) / (TP * TP));
+  const dur = 2 * TP + 1.4;
+  // Pluto at perihelion while Neptune is a quarter turn away: the resonance's real geometry
+  const at = (t) => {
+    const s = o.at(o.nuAt((TAU * t) / TP));
+    const th = Math.PI / 2 + (TAU * t) / TN;
+    return { px: F.x + s.x, py: F.y + s.y, pr: s.r, nx: F.x + rN * Math.cos(th), ny: F.y + rN * Math.sin(th) };
+  };
+  let closest = Infinity;
+  for (let t = 0; t <= 2 * TP; t += 0.01) { const q = at(t); closest = Math.min(closest, Math.hypot(q.px - q.nx, q.py - q.ny) / K); }
+  return {
+    dur,
+    still: 0.4,
+    draw(g, T) {
+      const t = Math.min(T, 2 * TP);
+      g.clear();
+      g.circle(F.x, F.y, rN, '#5577db', { alpha: 0.5 });
+      g.conic(o, F, C.chalk, { alpha: 0.45 });
+      g.body(F.x, F.y, 5, 'sun');
+      const q = at(t);
+      g.line(q.px, q.py, q.nx, q.ny, C.faint, { dash: [2, 3] });
+      g.body(q.nx, q.ny, 4, '#5577db');
+      g.text('Neptune', q.nx + 7, q.ny + 7, { color: C.dim, size: 11 });
+      const inside = q.pr < rN;
+      g.body(q.px, q.py, 2.6, '#d6bf9e');
+      g.text(inside ? 'Pluto, inside Neptune\'s orbit' : 'Pluto', q.px + (inside ? -6 : 6), q.py - 9, { color: inside ? C.ok : C.dim, size: 11, align: inside ? 'right' : 'left' });
+      const d = Math.hypot(q.px - q.nx, q.py - q.ny) / K;
+      g.panel([[`Apart ${d.toFixed(0)} AU`, C.term], [`Laps: Neptune ${(t / TN).toFixed(1)}, Pluto ${(t / TP).toFixed(1)}`, C.dim]]);
+      if (t < 0.3 * TP) return 'Pluto\'s orbit dips inside Neptune\'s. Why don\'t they collide?';
+      if (t < 1.1 * TP) return 'Neptune goes round three times for every two of Pluto\'s…';
+      return `…so whenever Pluto is closest to the Sun, Neptune is far away. They never get closer than ${Math.round(closest)} AU.`;
+    },
+  };
+};
+
 // ---------------------------------------------------------------- public
 
 const built = new Map();

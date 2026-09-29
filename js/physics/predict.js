@@ -7,7 +7,7 @@ const YEAR = 365.25 * 86400;
 
 /**
  * Predict the future path of a flight state as a list of conic patches.
- * Each patch: { body, t0, t1, state0, el, end, closed }
+ * Each patch: { body, t0, t1, state0, el, end, closed, hit }
  *   end: 'horizon' | 'impact' | 'exit' | 'enter'
  *   closed: the patch covers at least one full revolution (draw the whole ellipse)
  */
@@ -33,6 +33,7 @@ export function predict(state, t0, { revs = 3, maxPatches = 5, maxTime = 4 * YEA
       endRel: res.event ? res.event.rel : { x: s.x, y: s.y, vx: s.vx, vy: s.vy },
       closed: el.e < 1 && res.dt >= el.period,
       next: res.event ? res.event.to : null,
+      hit: res.event ? res.event.hit : null,
     };
     patches.push(patch);
     t += res.dt;

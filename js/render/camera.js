@@ -1,7 +1,7 @@
 // 2D camera: follows a focus (body, ship or target) with a pan offset, in km.
 // Screen y grows downward; world y grows upward.
 
-export const MIN_SCALE = 2e-8; // px per km (whole solar system)
+export const MIN_SCALE = 5e-9; // px per km (whole solar system, out to Eris at aphelion)
 export const MAX_SCALE = 400; // px per km (2.5 m per px)
 
 export class Camera {

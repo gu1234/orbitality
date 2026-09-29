@@ -211,6 +211,7 @@ export const TERMS = [
     body: [
       'Near the Moon the Moon\'s pull wins, and further out Earth\'s does. The game, like Kerbal Space Program, draws a boundary between them. Inside the dashed circle you orbit the Moon, and outside it you orbit Earth. Crossing it switches which body your orbit is measured around.',
       'The Moon\'s SOI reaches about 66,000 km from its centre. Earth\'s reaches about 925,000 km, and beyond that you orbit the Sun.',
+      'A small moon close to its planet may have almost none. Phobos\'s SOI would end below its own surface, so in the game Phobos, Deimos and Saturn\'s Mimas can be hit but not orbited.',
     ],
     anim: 'soi',
     related: ['encounter', 'capture', 'escape'],
@@ -370,6 +371,31 @@ export const TERMS = [
     ],
     anim: 'bielliptic',
     related: ['hohmann', 'apoapsis', 'delta-v'],
+  },
+  {
+    id: 'asteroid-belt',
+    name: 'Asteroid belt',
+    match: [/\basteroid belt\b/i, /\bKuiper belt\b/i],
+    short: 'A wide ring of rocks between Mars and Jupiter, and almost entirely empty space.',
+    body: [
+      'Over a million asteroids bigger than a kilometre circle the Sun between Mars and Jupiter. Jupiter\'s gravity stirred them up before they could gather into a planet. All of them together weigh about 3% of the Moon, and Ceres alone holds nearly 40% of that.',
+      'Films show asteroid fields crowded with tumbling rocks, but the real belt is almost empty. Neighbours are typically a million km apart, and spacecraft cross it without steering around anything. On the map each dot stands for thousands of asteroids, so the belt only looks crowded from far away.',
+      'Jupiter herds two more groups: the Trojans share its orbit in two swarms, a sixth of a lap ahead of it and a sixth behind, and the Hildas trace a slowly turning triangle. Beyond Neptune lies the Kuiper belt, a wider ring of icy bodies that includes Pluto.',
+    ],
+    anim: 'belt',
+    related: ['dwarf-planet', 'orbit', 'period'],
+  },
+  {
+    id: 'dwarf-planet',
+    name: 'Dwarf planet',
+    match: [/\bdwarf planets?\b/i],
+    short: 'Round and orbiting the Sun like a planet, but sharing its orbit with other small bodies.',
+    body: [
+      'A dwarf planet is big enough for its own gravity to pull it round, but unlike a planet it hasn\'t cleared its orbit of other bodies. Pluto, Eris, Haumea and Makemake orbit among the icy bodies of the Kuiper belt, and Ceres among the asteroids.',
+      'Pluto\'s orbit is such a stretched ellipse that for 20 years out of every 248 it is closer to the Sun than Neptune. They never meet. Pluto goes round twice for every three of Neptune\'s laps, and this resonance means Neptune is always far away when Pluto crosses its path. On the map Pluto sits in its real place relative to Neptune, so you can watch it happen.',
+    ],
+    anim: 'resonance',
+    related: ['asteroid-belt', 'ellipse', 'perihelion', 'period'],
   },
 ];
 

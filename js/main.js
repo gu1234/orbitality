@@ -440,6 +440,7 @@ function toast(text, warn = false, ms = 2600) {
   const el = $('toast');
   el.textContent = text;
   el.classList.toggle('warn', warn);
+  el.classList.remove('wrap');
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), ms);
@@ -503,7 +504,7 @@ function setFocus(f) {
     cam.animateTo(Math.min(renderer.w, renderer.h) / (far * 2.6), 0, 0, 0.6);
   } else if (f.kind === 'body' && cam.scale * w.body(f.id).radius < 4) {
     const b = w.body(f.id);
-    const span = Math.min(b.soi * 2, b.radius * 12);
+    const span = b.tiny ? b.radius * 12 : Math.min(b.soi * 2, b.radius * 12);
     cam.animateTo(Math.min(renderer.w, renderer.h) / span, 0, 0, 0.6);
   }
   updateHud(true);
@@ -580,6 +581,7 @@ function pick(px, py) {
     cands.push({ f: { kind: 'target' }, x: cam.sx(t.x), y: cam.sy(t.y), r: 10 });
   }
   for (const b of w.sys.bodies) {
+    if (b.collapsed(cam.scale)) continue; // hidden in its planet's disc
     const p = b.absPos(w.t);
     cands.push({ f: { kind: 'body', id: b.id }, x: cam.sx(p.x), y: cam.sy(p.y), r: Math.max(b.radius * cam.scale, b.minPx) });
   }
@@ -588,7 +590,18 @@ function pick(px, py) {
     const d = Math.hypot(c.x - px, c.y - py) - c.r;
     if (d < 26 && (!best || d < best.d)) best = { ...c, d };
   }
-  if (best && !sameFocus(best.f, cam.focus)) setFocus(best.f);
+  if (best && !sameFocus(best.f, cam.focus)) {
+    setFocus(best.f);
+    if (best.f.kind === 'body') bodyToast(w.body(best.f.id));
+  }
+}
+
+/** A line about a body the player just tapped: what it is, its size and a fact. */
+function bodyToast(b) {
+  if (!b.note) return;
+  const km = Math.round(b.radius * 2).toLocaleString('en-US');
+  toast(`${b.name}, ${b.describe()}, ${km} km across. ${b.note}.`, false, 4200);
+  $('toast').classList.add('wrap');
 }
 
 // ------------------------------------------------------------------ warp

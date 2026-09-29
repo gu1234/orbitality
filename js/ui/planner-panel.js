@@ -221,7 +221,7 @@ export class PlannerPanel {
       const p0 = r.pred[0];
       const el = p0.el;
       const R = p0.body.radius;
-      if (p0.end === 'impact') parts.push(`<span class="bad">Impact on ${p0.body.name} in ${fmtDur(p0.t1 - w.t)}</span>`);
+      if (p0.end === 'impact') parts.push(`<span class="bad">Impact on ${(p0.hit || p0.body).name} in ${fmtDur(p0.t1 - w.t)}</span>`);
       else if (el.e < 1 && el.ra < p0.body.soi) parts.push(`Ap ${fmtDist(el.ra - R)} · Pe ${fmtDist(el.rp - R)}`);
       else if (p0.end === 'exit') parts.push(`Escapes ${p0.body.name}`);
       else parts.push(`Pe ${fmtDist(el.rp - R)}`);

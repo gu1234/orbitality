@@ -285,7 +285,7 @@ export const SANDBOX = {
   id: 'sandbox',
   title: 'Sandbox',
   concept: 'Free flight',
-  brief: 'No target and no fuel limit. Fly anywhere you like: the Moon, escape Earth, visit other planets.',
+  brief: 'No target and no fuel limit. Fly anywhere you like: the Moon, escape Earth, visit other planets and their moons, or go all the way out to Pluto.',
   hints: [
     'Prograde raises the opposite side of your orbit. Retrograde lowers it.',
     'Radial burns rotate your orbit around you.',

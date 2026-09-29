@@ -4,6 +4,7 @@ import { elements, pointAt, kepler } from '../physics/kepler.js';
 import { fmtDist, fmtDur } from '../ui/format.js';
 import { PlanetArt } from './planets.js';
 import { Backdrop } from './backdrop.js';
+import { Belts } from './belts.js';
 
 const COL = {
   field: '#0f1f36',
@@ -51,6 +52,8 @@ export class Renderer {
     this.effects = [];
     this.planets = new PlanetArt();
     this.backdrop = new Backdrop();
+    this.belts = new Belts();
+    this.labels = []; // body and belt names, placed after the bodies so they don't overlap
   }
 
   resize() {
@@ -214,6 +217,11 @@ export class Renderer {
     const cur = ship.body;
     this.grid(cur.absPos(t), cam);
 
+    // --- asteroid and Kuiper belts
+    this.labels.length = 0;
+    const beltLabels = this.belts.draw(ctx, world, cam, w, h, this.dpr);
+    if (!this.minimal) for (const l of beltLabels) this.labels.push({ ...l, prio: 4, alpha: 0.55 });
+
     // --- body orbits and SOIs
     ctx.lineWidth = 1;
     for (const b of world.sys.bodies) {
@@ -221,12 +229,15 @@ export class Renderer {
       const pp = b.parent.absPos(t);
       const rpx = b.a * cam.scale;
       if (rpx > 18) {
-        ctx.strokeStyle = rgba(COL.chalk, b.parent.parent ? 0.2 : 0.14);
-        this.circle(pp.x, pp.y, b.a, cam);
+        // planets' and moons' orbits first; small bodies' fainter, so the planets' stay readable
+        const alpha = b.kind === 'planet' ? 0.14 : b.parent.parent ? (b.rank < 2 ? 0.2 : 0.13) : (b.rank < 2 ? 0.1 : 0.07);
+        ctx.strokeStyle = rgba(COL.chalk, alpha);
+        if (b.e) this.conic(b.orbit, 0, TWO_PI, pp.x, pp.y, cam);
+        else this.circle(pp.x, pp.y, b.a, cam);
       }
       const spx = b.soi * cam.scale;
       const relevant = b === cur || b.parent === cur || (world.target && b === world.target.body);
-      if (relevant && spx > 24) {
+      if (relevant && !b.tiny && spx > 24) {
         const bp = b.absPos(t);
         ctx.strokeStyle = rgba(COL.chalk, 0.16);
         ctx.setLineDash([3, 6]);
@@ -284,6 +295,7 @@ export class Renderer {
 
     // --- bodies
     for (const b of world.sys.bodies) this.body(world, b, cam);
+    this.drawLabels();
 
     // --- encounter ghosts & markers on the prediction
     if (pred && world.status === 'flying' && !ui.minimal) this.predictionMarkers(world, pred, cam);
@@ -607,7 +619,7 @@ export class Renderer {
     const rTrue = b.radius * cam.scale;
     const r = Math.max(rTrue, b.minPx);
     // a moon that collapses onto its planet at this zoom is not drawn
-    if (b.parent && b.parent.parent && b.a * cam.scale < Math.max(b.parent.radius * cam.scale, b.parent.minPx) + 4) return;
+    if (b.collapsed(cam.scale)) return;
     const cull = r * (b.id === 'saturn' ? 2.5 : b.parent ? 1.1 : 4);
     if (x + cull < -40 || y + cull < -40 || x - cull > this.w + 40 || y - cull > this.h + 40) return;
     if (!b.parent) {
@@ -646,8 +658,28 @@ export class Renderer {
       ctx.beginPath(); ctx.arc(x, y, r, 0, TWO_PI); ctx.fill();
     }
     if (rTrue < 14 && r < 14 && !this.minimal) {
-      this.label(b.name, x + r + 5, y - r - 4, rgba(COL.chalk, 0.75));
+      // the planets first, then big moons and dwarf planets, then the rest once their orbits open up
+      const own = b === world.ship.body || (world.target && b === world.target.body);
+      if (own || b.rank === 0 || b.rMax * cam.scale > (b.rank === 1 ? 45 : 90)) {
+        this.labels.push({ text: b.name, x: x + r + 5, y: y - r - 4, prio: own ? -1 : b.rank, alpha: b.rank ? 0.6 : 0.75 });
+      }
     }
+  }
+
+  /** Draw the queued name labels, most important first, skipping any that would overlap one already drawn. */
+  drawLabels() {
+    const ctx = this.ctx;
+    ctx.font = LABEL_FONT;
+    const boxes = [];
+    this.labels.sort((a, b) => a.prio - b.prio);
+    for (const l of this.labels) {
+      const x1 = l.x + ctx.measureText(l.text).width;
+      if (boxes.some((q) => l.x - 3 < q[2] && x1 + 3 > q[0] && l.y - 9 < q[3] && l.y + 9 > q[1])) continue;
+      boxes.push([l.x, l.y - 8, x1, l.y + 8]);
+      this.label(l.text, l.x, l.y, rgba(COL.chalk, l.alpha));
+      ctx.font = LABEL_FONT;
+    }
+    this.labels.length = 0;
   }
 
   shade(hex, k) {

@@ -322,9 +322,10 @@ export class World {
   onEvent(ev, from) {
     if (ev.type === 'impact') {
       this.status = 'crashed';
-      this.statusInfo = { body: from, t: this.t };
+      const hit = ev.hit || from;
+      this.statusInfo = { body: hit, t: this.t };
       this.stopBurn();
-      this.log.push({ t: this.t, type: 'impact', body: from.name });
+      this.log.push({ t: this.t, type: 'impact', body: hit.name });
     } else {
       this.log.push({ t: this.t, type: ev.type, from: ev.from.name, to: ev.to.name });
       this.trail = [];
