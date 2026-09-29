@@ -78,7 +78,7 @@ The **Glossary** page (main menu or pause menu) lists every term with its full e
 
 ## Levels
 
-The first three levels open with a short launch at dusk. The rocket lifts off through the clouds, climbs out of Earth's shadow into sunlight, drops its first stage and fairing, and releases your craft. The camera then pulls back into the game's map view, so the level starts where the launch left off. Tap or press any key to skip it. Retry and Restart go straight to the briefing.
+The first three levels open with a short launch at dusk. On the pad the rocket vents cold vapour beside its service tower, the engines light while hold-down clamps keep it in place, and exhaust rolls out of the flame trench as the umbilicals let go. It lifts off through the clouds, climbs out of Earth's shadow into sunlight, drops its first stage and fairing, and releases your craft. The camera then pulls back into the game's map view, so the level starts where the launch left off. Tap or press any key to skip it. Retry and Restart go straight to the briefing.
 
 1. **Catch Up**: the target is ahead in the same orbit. Burn retrograde to speed up around Earth.
 2. **Let It Come to You**: the target is behind you. Burn prograde, go higher, and let it catch up.

@@ -11,6 +11,10 @@
 // and the orbit view (thousands of km). The vehicle itself is drawn as an icon
 // whose size is set separately, as the game does with its ship marker.
 
+import { clamp01, smooth, ease, lerp, mixc, rgba, wrap, rng, curve, wobble, makeCanvas, softEllipse, upAngle } from './launch-util.js';
+import { Smoke } from './launch-smoke.js';
+import { PadScene } from './launch-pad.js';
+
 const R_E = 6371;
 const DEG = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -20,7 +24,7 @@ const FIELD = [15, 31, 54];
 
 // Cinematic timeline, in seconds.
 const EV = {
-  ignite: 0.55,
+  ignite: 0.3, // engines light while the clamps hold it down
   liftoff: 1.0,
   maxq: 2.55,
   meco: 3.25,
@@ -32,12 +36,13 @@ const EV = {
   pull: 6.45, // the camera starts to pull back to the game's view
   handoff: 8.45, // the frame now matches the game: fade across to it
 };
+const START = -0.6; // a moment on the pad before ignition
 const FADE = 0.65;
 const SKIP_FADE = 0.45;
 const ASCENT_ARC = 14; // degrees around Earth that the powered climb covers
 
 const STAGES = [
-  { at: 0, title: 'Terminal count', sub: 'All systems go' },
+  { at: -10, title: 'Terminal count', sub: 'All systems go' },
   { at: EV.ignite, title: 'Ignition', sub: 'Engines to full thrust' },
   { at: EV.liftoff, title: 'Liftoff', sub: 'Clearing the tower', tick: 'Liftoff' },
   { at: EV.maxq, title: 'Max Q', sub: 'Peak aerodynamic stress', tick: 'Max Q' },
@@ -48,56 +53,7 @@ const STAGES = [
   { at: EV.deploy, title: 'In orbit', sub: '', tick: 'Orbit' },
 ];
 
-// ---------------------------------------------------------------- helpers
-
-const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
-const smooth = (x) => { x = clamp01(x); return x * x * (3 - 2 * x); };
-const ease = (x) => { x = clamp01(x); return x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2; };
-const lerp = (a, b, k) => a + (b - a) * k;
-const mixc = (c1, c2, k) => [lerp(c1[0], c2[0], k), lerp(c1[1], c2[1], k), lerp(c1[2], c2[2], k)];
-const rgba = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a < 0 ? 0 : a > 1 ? 1 : a})`;
-const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-
-function rng(seed) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Smooth monotone curve through [x, y] keys (Fritsch–Carlson), flat at both ends. */
-function curve(keys) {
-  const n = keys.length;
-  const xs = keys.map((k) => k[0]), ys = keys.map((k) => k[1]);
-  const d = [], m = new Array(n).fill(0);
-  for (let i = 0; i < n - 1; i++) d[i] = (ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]);
-  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
-  for (let i = 0; i < n - 1; i++) {
-    if (d[i] === 0) { m[i] = m[i + 1] = 0; continue; }
-    const a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
-    if (s > 9) { const k = 3 / Math.sqrt(s); m[i] = k * a * d[i]; m[i + 1] = k * b * d[i]; }
-  }
-  return (x) => {
-    if (x <= xs[0]) return ys[0];
-    if (x >= xs[n - 1]) return ys[n - 1];
-    let i = 0;
-    while (x > xs[i + 1]) i++;
-    const h = xs[i + 1] - xs[i], t = (x - xs[i]) / h, t2 = t * t, t3 = t2 * t;
-    return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1];
-  };
-}
-
-/** Cheap smooth noise, roughly in [-1, 1]. */
-const wobble = (t, s = 0) => Math.sin(t * 13.1 + s) * 0.5 + Math.sin(t * 29.7 + s * 2.3) * 0.3 + Math.sin(t * 57.3 + s * 4.1) * 0.2;
-
-function makeCanvas(w, h) {
-  const c = document.createElement('canvas');
-  c.width = Math.max(1, Math.round(w));
-  c.height = Math.max(1, Math.round(h));
-  return c;
-}
+// ---------------------------------------------------------------- sprites
 
 /** A soft puff built from a few overlapping blobs, so smoke billows rather than looking like discs. */
 function puffSprite(col, seed = 1, lumps = 7) {
@@ -118,54 +74,49 @@ function puffSprite(col, seed = 1, lumps = 7) {
   return c;
 }
 
-/** A flat-bottomed cumulus built from soft blobs, lit from above (dusk) or below (engine glow). */
-function cloudSprite(seed, body, lit, fromBelow) {
-  const W = 384, H = 160, c = makeCanvas(W, H), x = c.getContext('2d');
+/**
+ * A flat-bottomed cumulus built from shaded lumps: `pal` gives the lit, middle
+ * and shadowed colours, and `light` where the light comes from (top for the
+ * dusk sky, bottom for the engines as the rocket passes).
+ */
+function cloudSprite(seed, pal, light) {
+  const W = 512, H = 212, c = makeCanvas(W, H), x = c.getContext('2d');
   const r = rng(seed);
-  for (let i = 0; i < 26; i++) {
-    const cx = W * (0.12 + r() * 0.76);
+  const lumps = [];
+  for (let i = 0; i < 70; i++) {
+    const cx = W * (0.1 + r() * 0.8);
     const edge = 1 - Math.abs(cx / W - 0.5) * 2;
-    const rad = H * (0.12 + r() * 0.2) * (0.5 + edge * 0.7);
-    const cy = H * 0.72 - rad * (0.2 + r() * 0.6) * edge;
-    const g = x.createRadialGradient(cx, cy, 0, cx, cy, rad);
-    g.addColorStop(0, rgba(body, 0.95));
-    g.addColorStop(0.6, rgba(body, 0.55));
-    g.addColorStop(1, rgba(body, 0));
-    x.fillStyle = g;
-    x.beginPath(); x.arc(cx, cy, rad, 0, TWO_PI); x.fill();
+    const rad = H * (0.06 + r() * 0.12) * (0.5 + edge * 0.7);
+    const cy = H * 0.74 - rad * (0.15 + r() * 0.7) * (0.4 + edge);
+    lumps.push({ x: cx, y: cy, r: rad });
   }
+  lumps.sort((p, q) => (q.y * light.y) - (p.y * light.y));
+  for (const l of lumps) {
+    const g = x.createRadialGradient(l.x + light.x * l.r * 0.4, l.y + light.y * l.r * 0.5, l.r * 0.05, l.x, l.y, l.r);
+    g.addColorStop(0, rgba(pal.hi, 0.95));
+    g.addColorStop(0.55, rgba(pal.mid, 0.85));
+    g.addColorStop(1, rgba(pal.lo, 0));
+    x.fillStyle = g;
+    x.beginPath(); x.arc(l.x, l.y, l.r, 0, TWO_PI); x.fill();
+  }
+  // a flat, darker base where the cloud sits on its condensation level
   x.globalCompositeOperation = 'source-atop';
-  const g = fromBelow ? x.createLinearGradient(0, H, 0, 0) : x.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, rgba(lit, 0.9));
-  g.addColorStop(0.55, rgba(lit, 0.15));
-  g.addColorStop(1, rgba(lit, 0));
-  x.fillStyle = g;
+  const b = x.createLinearGradient(0, H * 0.55, 0, H * 0.78);
+  b.addColorStop(0, rgba(pal.lo, 0));
+  b.addColorStop(1, rgba(pal.lo, light.y < 0 ? 0.55 : 0));
+  x.fillStyle = b;
   x.fillRect(0, 0, W, H);
+  x.globalCompositeOperation = 'destination-out';
+  x.fillRect(0, H * 0.8, W, H * 0.2);
   return c;
 }
-
-/** A soft elliptical glow (no hard edges): centre (x, y), half-width w, half-length l, colour stops [at, rgb, alpha]. */
-function softEllipse(ctx, x, y, w, l, stops) {
-  if (w <= 0 || l <= 0) return;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(w / l, 1);
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, l);
-  for (const [at, col, a] of stops) g.addColorStop(at, rgba(col, a));
-  ctx.fillStyle = g;
-  ctx.fillRect(-l, -l, 2 * l, 2 * l);
-  ctx.restore();
-}
-
-/** Rotation that turns a canvas's -y axis to point along screen vector v. */
-const upAngle = (v) => Math.atan2(v.x, -v.y);
 
 // ---------------------------------------------------------------- flight profile
 
 const P = {
   pitch: curve([[1.7, 0], [2.4, 5], [2.8, 15], [EV.meco, 36], [EV.fairing, 62], [EV.seco, 83], [EV.deploy, 88], [6.8, 90]]),
   size: curve([[2.0, 1], [EV.meco, 0.82], [5.0, 0.68], [EV.seco, 0.66], [EV.deploy + 0.25, 0.95]]),
-  shake: curve([[0.5, 0], [0.62, 2.6], [1.4, 3.2], [2.0, 1.1], [EV.maxq, 2.2], [2.9, 1], [EV.meco, 0.5], [EV.meco + 0.05, 0]]),
+  shake: curve([[0.3, 0], [0.42, 2.2], [1.0, 2.8], [1.4, 3.2], [2.0, 1.1], [EV.maxq, 2.2], [2.9, 1], [EV.meco, 0.5], [EV.meco + 0.05, 0]]),
   // distance from the vehicle down to the ground, in screen heights, by log10(altitude km):
   // the ground drops away, the clouds rush past, then the horizon settles back into view
   ground: curve([[-1.3, 1.1], [-0.5, 1.6], [0.3, 2.2], [0.8, 2.0], [1.2, 1.2], [1.6, 0.62], [2.0, 0.36], [2.6, 0.24], [3, 0.22]]),
@@ -192,6 +143,8 @@ export class LaunchCinematic {
     this.dpr = 1;
     this.sprites = null;
     this.f = null;
+    this.smoke = new Smoke();
+    this.pad = new PadScene(this, EV);
     this.onPointer = (e) => { e.preventDefault(); this.skip(); };
     this.onKey = (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -358,24 +311,26 @@ export class LaunchCinematic {
     this.alt = curve([[EV.liftoff, 0], [1.3, 0.01], [1.65, 0.085], [1.95, 0.6], [2.2, 2.6], [2.4, 6.5], [2.8, 17], [EV.meco, 62], [EV.s2, 62 + 26 * Math.sqrt(ka)], [EV.fairing, 135 * ka], [5.3, 265 * ka], [EV.seco, 392 * ka], [EV.deploy, this.orbitAlt]]);
     this.speed = curve([[EV.liftoff, 0], [1.65, 0.05], [2.2, 0.3], [2.8, 0.9], [EV.meco, 2.2], [EV.s2, 2.15], [EV.fairing, 3.1 * kv], [EV.seco, this.orbitV], [20, this.orbitV]]);
     this.subs = { [EV.deploy]: `${Math.round(this.orbitAlt)} km up at ${this.orbitV.toFixed(1)} km/s` };
-    this.t = 0;
-    this.parts = [];
+    const m = world.body('moon').absPos(world.t);
+    const ml = Math.hypot(m.x - e.x, m.y - e.y) || 1;
+    this.moonDir = { x: (m.x - e.x) / ml, y: (m.y - e.y) / ml };
+    this.t = START;
     this.trail = [];
     this.trailClock = 0;
-    this.columnB = undefined;
+    this.columnY = undefined;
     this.rand = rng(11);
+    this.smoke.reset();
+    this.pad.reset();
     this.syncSize();
     if (!this.sprites) this.makeSprites();
-    this.f = this.frame(0);
+    this.f = this.frame(this.t);
   }
 
   makeSprites() {
     this.sprites = {
-      smoke: [1, 2, 3].map((k) => puffSprite([128, 138, 165], k)),
-      warm: puffSprite([255, 150, 70], 9, 1),
       white: puffSprite([240, 244, 250], 7, 1),
-      clouds: [0, 1, 2].map((i) => cloudSprite(31 + i * 7, [70, 86, 122], [255, 170, 150], false)),
-      cloudsWarm: [0, 1, 2].map((i) => cloudSprite(31 + i * 7, [255, 140, 60], [255, 200, 120], true)),
+      clouds: [0, 1, 2].map((i) => cloudSprite(31 + i * 7, { hi: [232, 176, 178], mid: [112, 114, 156], lo: [56, 64, 98] }, { x: 0.3, y: -0.5 })),
+      cloudsWarm: [0, 1, 2].map((i) => cloudSprite(31 + i * 7, { hi: [255, 214, 160], mid: [226, 138, 88], lo: [120, 70, 60] }, { x: 0, y: 0.6 })),
     };
     const r = rng(5);
     this.clouds = [];
@@ -426,12 +381,12 @@ export class LaunchCinematic {
 
     // screen anchor for the vehicle point (the base of the stack)
     const axisTrack = this.dirToScreen(f.axisW, Math.PI / 2 - phi);
-    const com = { x: W * 0.56, y: H * 0.47 };
+    const com = { x: W * 0.56, y: H * lerp(0.35, 0.47, smooth((t - 1.8) / 0.7)) };
     const lead = lerp(0.42, 0.86, smooth((t - EV.seco) / 0.6)); // how far up the stack the camera centres
     const target = { x: com.x - axisTrack.x * lead * f.L, y: com.y - axisTrack.y * lead * f.L };
-    const pad = { x: W * 0.5, y: H * 0.84 };
-    const rise0 = Math.max(40, pad.y - H * 0.62);
-    const follow = 1 - Math.exp(-near / rise0); // locked off at first, then tracking
+    const pad = this.padStart();
+    const room = Math.max(40, pad.y - target.y); // how far it climbs on screen before the camera follows
+    const follow = 1 - Math.exp(-near / room); // locked off at first, then tracking
     let ax = lerp(pad.x, target.x, follow), ay = lerp(pad.y, target.y, follow);
 
     // pull back and roll into the game's own framing
@@ -513,50 +468,23 @@ export class LaunchCinematic {
     const f = this.frame(t);
     this.f = f;
     const r = this.rand;
-    let column = 0;
-    for (const p of this.parts) if (p.column) column++;
-    const full = this.parts.length - column >= 380;
-
-    // before ignition: cold vapour venting off the upper stage and drifting down
-    if (t < EV.ignite + 0.3 && !full && r() < 0.6) {
-      this.parts.push({ a: 0.001 + r() * 0.003, b: 0.05 + r() * 0.012, va: 0.004 + r() * 0.004, vb: -0.002 - r() * 0.003, r: 0.0015 + r() * 0.002, gr: 0.004, life: 0, max: 1.6 + r(), alpha: 0.35, kind: 'white' });
-    }
-    // ignition: exhaust thrown sideways out of the flame trench, steam round the mount
-    const firing1 = t > EV.ignite && t < EV.meco;
-    if (firing1 && t < 2.1 && !full) {
-      const n = t < EV.liftoff + 0.5 ? 8 : 3;
-      for (let i = 0; i < n; i++) {
-        const side = r() < 0.5 ? -1 : 1;
-        this.parts.push(r() < 0.75
-          ? { a: side * (0.04 + r() * 0.01), b: 0.002 + r() * 0.004, va: side * (0.05 + r() * 0.1), vb: 0.003 + r() * 0.01, r: 0.005 + r() * 0.006, gr: 0.016 + r() * 0.01, life: 0, max: 3 + r() * 1.8, alpha: 0.5, kind: 'smoke' }
-          : { a: (r() - 0.5) * 0.02, b: 0.001, va: (r() - 0.5) * 0.03, vb: 0.015 + r() * 0.02, r: 0.004 + r() * 0.005, gr: 0.012, life: 0, max: 2.4 + r(), alpha: 0.28, kind: 'white' });
-      }
-    }
+    // the pad: venting, the umbilicals letting go, trench fire, exhaust and steam
+    this.pad.update(dt, f);
     // the climb: a column of smoke left hanging in the air behind the engines
     // (spaced by distance climbed, so the column reaches all the way up to the engines)
-    const rr0 = 0.01 + f.h * 0.006;
-    if (firing1 && t > EV.liftoff && f.h < 30 && column < 400) {
-      const nz = this.nozzleScreen(f);
-      const p = this.toPad(this.toWorld(f, nz.x, nz.y));
-      if (this.columnB === undefined || Math.abs(p.b - this.columnB) > rr0 * 0.9) {
-        this.columnB = p.b;
+    const firing1 = t > EV.ignite && t < EV.meco;
+    const rr0 = 10 + f.h * 6;
+    if (firing1 && t > EV.liftoff && f.h < 30 && this.smoke.count((p) => p.column) < 400) {
+      const nz = this.nozzlePad(f);
+      if (this.columnY === undefined || Math.abs(nz.y - this.columnY) > rr0 * 0.9) {
+        this.columnY = nz.y;
         for (let i = 0; i < 2; i++) {
           const rr = rr0 * (0.7 + r() * 0.6);
-          this.parts.push({ a: p.a + (r() - 0.5) * rr, b: p.b - r() * rr, va: (r() - 0.5) * 0.01, vb: -0.01 * r(), r: rr, gr: 0.012 + f.h * 0.005, life: 0, max: 2.4 + r() * 1.2, alpha: 0.75 * f.air + 0.1, kind: 'smoke', column: true });
+          this.smoke.emit({ kind: 'smoke', x: nz.x + (r() - 0.5) * rr, y: nz.y - r() * rr, vx: (r() - 0.5) * 10, vy: -10 * r(), r: rr, gr: 12 + f.h * 5, life: 2.4 + r() * 1.2, a: 0.75 * f.air + 0.1, column: true, buoy: 0, drag: 1.3 });
         }
       }
     }
-    for (const p of this.parts) {
-      if (p.v === undefined) p.v = (r() * 3) | 0;
-      p.life += dt;
-      p.a += p.va * dt;
-      p.b += p.vb * dt;
-      p.va *= 1 - 1.3 * dt;
-      p.vb = p.vb * (1 - 0.8 * dt) + (p.kind === 'smoke' ? 0.004 * dt : 0);
-      p.r += p.gr * dt;
-      if (p.b < 0.001) p.b = 0.001;
-    }
-    this.parts = this.parts.filter((p) => p.life < p.max);
+    this.smoke.update(dt);
 
     // a high exhaust trail that catches the sunlight above Earth's shadow
     this.trailClock -= dt;
@@ -570,6 +498,23 @@ export class LaunchCinematic {
       const el = Math.asin(Math.max(-1, Math.min(1, Math.cos(ang) * this.sun.x + Math.sin(ang) * this.sun.y)));
       this.trail.push({ x: w.x, y: w.y, born: t, lit: this.sunlitAt(h, el), h });
     }
+  }
+
+  /** The engines' position in pad metres (x to the right of up, y up). */
+  nozzlePad(f) {
+    const nz = this.nozzleScreen(f);
+    const p = this.toPad(this.toWorld(f, nz.x, nz.y));
+    return { x: -this.dir * p.a * 1000, y: p.b * 1000 };
+  }
+
+  /** Where the pad sits on screen before liftoff. */
+  padStart() {
+    return { x: this.W * 0.5, y: this.H * 0.78 };
+  }
+
+  /** +1 when the Sun is off to the right of the screen, -1 when to the left. */
+  sunSide(f) {
+    return f.sunS.x * -f.up.y + f.sunS.y * f.up.x > 0 ? 1 : -1;
   }
 
   nozzleScreen(f) {
@@ -590,13 +535,16 @@ export class LaunchCinematic {
     this.renderer.backdrop.draw(ctx, W, H, dpr, performance.now() / 1000);
     this.drawEarth(f);
     this.drawSky(f);
-    if (f.h < 1.2) this.drawPad(f);
+    const pad = f.h < 1.2;
+    if (pad) this.pad.drawBack(f);
     this.drawClouds(f, false);
     this.drawTrail(f);
-    this.drawSmoke(f);
-    if (f.h < 1.2) this.drawTower(f);
+    this.drawSmoke(f, 'back');
+    if (pad) this.pad.drawTower(f);
     this.drawDebris(f);
     this.drawVehicle(f);
+    if (pad) this.pad.drawFront(f);
+    this.drawSmoke(f, 'front');
     this.drawClouds(f, true);
     this.drawOrbit(f);
     this.drawPayloadFree(f);
@@ -701,6 +649,7 @@ export class LaunchCinematic {
       ctx.fillStyle = a;
       ctx.fillRect(0, 0, W, H);
     }
+    this.pad.drawSky(f, o, dens, this.sunSide(f));
   }
 
   /** Transform so that drawing in metres at the pad (x right, y down, 0 at deck level) lands on screen. */
@@ -712,138 +661,6 @@ export class LaunchCinematic {
     ctx.rotate(upAngle(f.up));
     ctx.scale(k, k);
     return k;
-  }
-
-  /** Ground, the far shoreline and the floodlights around the pad. */
-  drawPad(f) {
-    const ctx = this.ctx, { W, H } = this;
-    const fade = 1 - smooth((f.h - 0.6) / 0.5);
-    if (fade <= 0) return;
-    ctx.save();
-    ctx.globalAlpha = fade;
-    // far horizon: sinks more slowly than the ground beneath us (parallax)
-    const o = this.padPoint(f, 0, 0);
-    ctx.save();
-    ctx.translate(o.x, o.y);
-    ctx.rotate(upAngle(f.up));
-    ctx.translate(0, -f.h * f.m * 0.65);
-    const ps = f.L0 / 70; // px per metre at the pad
-    const far = [[-1.9, 0], [-1.6, -8], [-1.1, -6], [-0.9, -12], [-0.55, -10], [-0.3, -14], [0.3, -9], [0.7, -13], [1.1, -8], [1.6, -11], [1.9, 0]];
-    ctx.fillStyle = '#0a1426';
-    ctx.beginPath();
-    ctx.moveTo(-W * 2, 0);
-    for (const [x, y] of far) ctx.lineTo(x * W, y * ps * 0.6);
-    ctx.lineTo(W * 2, 0);
-    ctx.lineTo(W * 2, H * 3);
-    ctx.lineTo(-W * 2, H * 3);
-    ctx.fill();
-    // an assembly building and a string of sodium lights along the shore
-    ctx.fillStyle = '#0c182c';
-    ctx.fillRect(-0.62 * W, -34 * ps, 22 * ps, 34 * ps);
-    for (let i = 0; i < 26; i++) {
-      const x = (-1.3 + i * 0.1 + Math.sin(i * 7.3) * 0.03) * W;
-      ctx.fillStyle = i % 5 === 0 ? 'rgba(255,214,160,0.9)' : 'rgba(255,181,71,0.7)';
-      ctx.fillRect(x, -2 * ps - (i % 3) * ps, 1.6, 1.6);
-    }
-    if (Math.sin(this.t * 6) > 0.2) {
-      ctx.fillStyle = '#ff4d3d';
-      ctx.fillRect(-0.62 * W + 10 * ps, -35 * ps, 2.2, 2.2);
-    }
-    ctx.restore();
-
-    // the near ground and the pad deck, in metres
-    ctx.save();
-    this.padTransform(f);
-    const g = ctx.createLinearGradient(0, 0, 0, 120);
-    g.addColorStop(0, '#111d31');
-    g.addColorStop(1, '#070e1b');
-    ctx.fillStyle = g;
-    ctx.fillRect(-2000, 10, 4000, 4000);
-    ctx.fillStyle = '#1b2638';
-    ctx.beginPath();
-    ctx.moveTo(-70, 10); ctx.lineTo(-38, 0); ctx.lineTo(38, 0); ctx.lineTo(70, 10); ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#05080f'; // flame trench exits
-    ctx.fillRect(-46, 3, 8, 6);
-    ctx.fillRect(38, 3, 8, 6);
-    ctx.fillStyle = '#2a3446'; // launch mount
-    ctx.fillRect(-7, -2, 14, 2);
-    ctx.fillStyle = 'rgba(190,205,235,0.35)';
-    ctx.fillRect(-38, 0, 76, 0.6);
-    ctx.restore();
-
-    // floodlights raking up at the rocket
-    const beams = 1 - smooth((f.h - 0.03) / 0.25);
-    if (beams > 0) {
-      ctx.save();
-      this.padTransform(f);
-      ctx.globalCompositeOperation = 'lighter';
-      for (const [x, tx] of [[-150, -3], [-95, 2], [95, -2], [160, 4]]) {
-        ctx.save();
-        ctx.translate(x, 10);
-        ctx.rotate(Math.atan2(-45, tx - x));
-        const len = 260;
-        const bg = ctx.createLinearGradient(0, 0, len, 0);
-        bg.addColorStop(0, `rgba(200,220,255,${0.075 * beams})`);
-        bg.addColorStop(1, 'rgba(200,220,255,0)');
-        ctx.fillStyle = bg;
-        ctx.beginPath();
-        ctx.moveTo(0, -1); ctx.lineTo(len, -11); ctx.lineTo(len, 11); ctx.lineTo(0, 1);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(230,240,255,0.9)';
-        ctx.beginPath(); ctx.arc(0, 0, 0.6, 0, TWO_PI); ctx.fill();
-        ctx.restore();
-      }
-      ctx.restore();
-    }
-    ctx.restore();
-  }
-
-  /** Service tower and lightning masts, drawn over the smoke billowing behind them. */
-  drawTower(f) {
-    const ctx = this.ctx;
-    const fade = 1 - smooth((f.h - 0.6) / 0.5);
-    if (fade <= 0) return;
-    ctx.save();
-    ctx.globalAlpha = fade;
-    const k = this.padTransform(f);
-    const px = 1 / k; // one screen pixel, in metres
-    const lit = 1 - smooth((f.h - 0.05) / 0.3);
-    ctx.strokeStyle = '#0b1322';
-    ctx.lineWidth = 1.4 * px;
-    ctx.beginPath();
-    ctx.moveTo(-80, 10); ctx.lineTo(-80, -125);
-    ctx.moveTo(62, 10); ctx.lineTo(62, -125);
-    ctx.stroke();
-    // tower: a dark lattice with its edges caught by the floodlights
-    const x0 = -22, x1 = -12, top = -86;
-    ctx.fillStyle = 'rgba(12,20,34,0.92)';
-    ctx.fillRect(x0, top, x1 - x0, -top + 0.5);
-    ctx.strokeStyle = rgba([150, 170, 205], 0.3 + 0.35 * lit);
-    ctx.lineWidth = Math.max(0.35, 0.9 * px);
-    ctx.beginPath();
-    for (let y = 0; y > top; y -= 6) {
-      ctx.moveTo(x0, y); ctx.lineTo(x1, y - 6);
-      ctx.moveTo(x1, y); ctx.lineTo(x0, y - 6);
-      ctx.moveTo(x0, y); ctx.lineTo(x1, y);
-    }
-    ctx.moveTo(x0, 0); ctx.lineTo(x0, top);
-    ctx.moveTo(x1, 0); ctx.lineTo(x1, top);
-    ctx.stroke();
-    ctx.fillStyle = '#0b1322';
-    ctx.fillRect(-18.4, top - 14, 2.8, 14);
-    // the crew access arm swings clear before ignition
-    ctx.save();
-    ctx.translate(x1, -64);
-    ctx.rotate(-smooth(this.t / 0.5) * 1.25);
-    ctx.fillStyle = '#1a2436';
-    ctx.fillRect(0, -1.6, 10, 3.2);
-    ctx.restore();
-    if (Math.sin(this.t * 5) > 0) {
-      ctx.fillStyle = '#ff4d3d';
-      for (const [x, y] of [[-80, -126], [62, -126], [-17, top - 15]]) ctx.fillRect(x - 1.2 * px, y - 1.2 * px, 2.4 * px, 2.4 * px);
-    }
-    ctx.restore();
   }
 
   drawClouds(f, front) {
@@ -903,33 +720,18 @@ export class LaunchCinematic {
     ctx.restore();
   }
 
-  drawSmoke(f) {
-    const ctx = this.ctx, { W, H } = this;
-    if (!this.parts.length) return;
-    const glow = this.glowPower(f);
-    const nz = this.nozzleScreen(f);
-    const reach = f.L0 * 0.9;
-    const floods = 1 - smooth((f.h - 0.05) / 0.4);
-    const lit = [];
-    for (const p of this.parts) {
-      const s = this.padPoint(f, p.a, p.b);
-      const r = p.r * f.scale;
-      if (r < 0.6 || s.x + r < 0 || s.x - r > W || s.y + r < 0 || s.y - r > H) continue;
-      const k = p.life / p.max;
-      const a = p.alpha * (1 - k) * Math.min(1, p.life * 6);
-      ctx.globalAlpha = a * (p.column ? 0.9 : 0.55 + 0.45 * floods);
-      ctx.drawImage(p.kind === 'white' ? this.sprites.white : this.sprites.smoke[p.v ?? 0], s.x - r, s.y - r, 2 * r, 2 * r);
-      const warm = glow * Math.exp(-Math.hypot(s.x - nz.x, s.y - nz.y) / (p.column ? reach * 1.6 : reach));
-      if (warm > 0.03) lit.push(s.x - r, s.y - r, 2 * r, Math.min(1, warm * a * 0.9));
-    }
-    // engine light on the smoke, in one additive pass
-    ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < lit.length; i += 4) {
-      ctx.globalAlpha = lit[i + 3];
-      ctx.drawImage(this.sprites.warm, lit[i], lit[i + 1], lit[i + 2], lit[i + 2]);
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
+  /** Smoke, steam and vapour: one layer, drawn in pad metres, lit from inside by the flames. */
+  drawSmoke(f, layer) {
+    if (!this.smoke.parts.length) return;
+    const ctx = this.ctx;
+    const k = f.scale / 1000; // px per metre
+    const nz = this.nozzlePad(f);
+    const far = (f.L0 * 0.8) / k; // the glow's size once we're climbing
+    const lights = [{ x: nz.x, y: nz.y - 6, power: this.glowPower(f), reach: lerp(22, far, smooth((f.h * 1000 - 30) / 400)) }, ...this.pad.lights(f)];
+    ctx.save();
+    this.padTransform(f);
+    this.smoke.draw(ctx, layer, lights);
+    ctx.restore();
   }
 
   /** How strongly the first stage engines light up their surroundings. */
@@ -1135,6 +937,9 @@ export class LaunchCinematic {
       ctx.fill();
     }
     this.shade(() => { ctx.beginPath(); ctx.rect(-3.4, -60, 6.8, 58.5); }, 3.4, -60, -1.5, CHALK, L);
+    this.skin(-60, -1.5, [-45, -24, -12], L);
+    this.frost(-58, -37, L);
+    this.lettering(-33, L);
     // thrust section band and folded landing legs
     ctx.fillStyle = 'rgba(20,26,38,0.85)';
     ctx.fillRect(-3.4, -4.5, 6.8, 3);
@@ -1156,6 +961,65 @@ export class LaunchCinematic {
     this.shade(() => { ctx.beginPath(); ctx.rect(-3.4, -67, 6.8, 7.2); }, 3.4, -67, -60, [60, 64, 74], L);
   }
 
+  /** Panel seams and a cable raceway down one side of a stage. */
+  skin(y0, y1, seams, L) {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(20,28,44,0.18)';
+    ctx.fillRect(2.35, y0 + 1, 0.55, y1 - y0 - 2);
+    ctx.strokeStyle = `rgba(20,28,44,${0.16 + 0.1 * L.key.i})`;
+    ctx.lineWidth = 0.14;
+    ctx.beginPath();
+    for (const y of seams) { ctx.moveTo(-3.4, y); ctx.lineTo(3.4, y); }
+    ctx.stroke();
+  }
+
+  /** Frost on the liquid oxygen tanks, which sheds as the rocket climbs. */
+  frost(y0, y1, L) {
+    const k = 0.32 * (1 - smooth((this.f.h - 0.3) / 2.5));
+    if (k <= 0.01) return;
+    const ctx = this.ctx;
+    if (!this.frostPattern) {
+      const c = makeCanvas(48, 48), x = c.getContext('2d');
+      const r = rng(9);
+      x.fillStyle = 'rgba(255,255,255,0.35)';
+      x.fillRect(0, 0, 48, 48);
+      for (let i = 0; i < 160; i++) {
+        x.fillStyle = `rgba(255,255,255,${0.2 + r() * 0.4})`;
+        x.fillRect(r() * 48, r() * 48, 1, 2 + r() * 6);
+      }
+      this.frostPattern = ctx.createPattern(c, 'repeat');
+    }
+    this.frostPattern.setTransform(new DOMMatrix().scale(0.12));
+    ctx.save();
+    ctx.globalAlpha *= k * (0.6 + 0.4 * L.key.i);
+    ctx.fillStyle = this.frostPattern;
+    ctx.fillRect(-3.4, y0, 6.8, y1 - y0);
+    // the frost line softens into bare metal below the tank
+    const g = ctx.createLinearGradient(0, y1 - 3, 0, y1 + 1);
+    g.addColorStop(0, 'rgba(236,242,250,0.35)');
+    g.addColorStop(1, 'rgba(236,242,250,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-3.4, y1 - 3, 6.8, 4);
+    ctx.restore();
+  }
+
+  /** The rocket's name down the side of the first stage, when it's big enough to read. */
+  lettering(y, L) {
+    const ctx = this.ctx;
+    const u = ctx.getTransform();
+    if (Math.hypot(u.a, u.b) / this.dpr < 2.2) return;
+    ctx.save();
+    ctx.translate(-0.2, y);
+    ctx.rotate(-Math.PI / 2);
+    ctx.font = "600 2.3px 'Barlow Condensed', 'Arial Narrow', sans-serif";
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = `rgba(22,36,62,${0.55 + 0.25 * L.key.i})`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0.35px';
+    ctx.fillText('ORBITALITY', 0, 0);
+    ctx.restore();
+  }
+
   stage2(L, exposed) {
     const ctx = this.ctx, t = this.t;
     if (exposed) {
@@ -1171,6 +1035,8 @@ export class LaunchCinematic {
       ctx.fill();
     }
     this.shade(() => { ctx.beginPath(); ctx.rect(-3.4, -86, 6.8, 19); }, 3.4, -86, -67, CHALK, L);
+    this.skin(-86, -67, [-73], L);
+    this.frost(-85, -75, L);
     ctx.fillStyle = 'rgba(20,26,38,0.7)';
     ctx.fillRect(-3.4, -79.5, 6.8, 0.8);
   }
@@ -1395,7 +1261,7 @@ export class LaunchCinematic {
     set('alt', this.elAlt, alt < 1 ? `${Math.round(alt * 1000)} m` : `${Math.round(alt)} km`);
     const v = t < EV.deploy ? this.speed(t) : this.orbitV;
     set('speed', this.elSpeed, v < 1 ? `${Math.round(v * 1000)} m/s` : `${v.toFixed(2)} km/s`);
-    const pct = `${Math.min(100, (t / EV.deploy) * 100).toFixed(1)}%`;
+    const pct = `${Math.max(0, Math.min(100, (t / EV.deploy) * 100)).toFixed(1)}%`;
     if (this.shown.pct !== pct) { this.shown.pct = pct; this.elFill.style.width = pct; }
     const current = stage.at === EV.s2 ? EV.meco : stage.at;
     for (const tk of this.ticks) {
